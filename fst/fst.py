@@ -6,8 +6,24 @@ from . import fst_config as config
 verbosity = 0
 
 FST = namedtuple('FST', ['Q', 'T', 'q0', 'qf'])
-Transition = namedtuple('Transition', ['src', 'label', 'dest'])
 
+class Transition():
+    def __init__(self,
+        src=None, ilabel=None, olabel=None, weight=None, dest=None):
+        self.src = src
+        self.ilabel = ilabel if ilabel is not None else olabel
+        self.olabel = olabel if olabel is not None else ilabel
+        self.weight = weight
+        self.dest = dest
+    
+    def __str__(self):
+        return '('+ str(self.src) +','+ str(self.ilabel) \
+                +','+ str(self.olabel) +','+ str(self.dest) +')'
+    
+    def __repr__(self):
+        return self.__str__()
+
+#Transition = namedtuple('Transition', ['src', 'label', 'dest'])
 
 def suffix(alpha, l):
     """
@@ -40,7 +56,7 @@ def left_context_acceptor(Sigma, length=1):
     # Initial state and outgoing transition
     q0, q1 = ('λ',), (begin_delim,)
     Q = {q0, q1}
-    T = { Transition(q0, begin_delim, q1) }
+    T = { Transition(src=q0, olabel=begin_delim, dest=q1) }
 
     # Interior transitions
     # xα -- y --> αy for each y
@@ -52,7 +68,7 @@ def left_context_acceptor(Sigma, length=1):
             if q1 == q0: continue
             for x in Sigma:
                 q2 = suffix(q1,length) + (x,)
-                T.add(Transition(q1, x, q2))
+                T.add(Transition(src=q1, olabel=x, dest=q2))
                 Qnew.add(q2)
         Q |= Qnew
     
@@ -61,7 +77,7 @@ def left_context_acceptor(Sigma, length=1):
     for q1 in Q:
         if q1 == q0: continue
         q2 = suffix(q1,length) + (end_delim,)
-        T.add(Transition(q1, end_delim, q2))
+        T.add(Transition(src=q1, olabel=end_delim, dest=q2))
         qf.add(q2)
     Q |= qf
 
@@ -81,7 +97,7 @@ def right_context_acceptor(Sigma, length=1):
     # Final state and incoming transition
     qf, qp = ('λ2',), (end_delim,)
     Q = {qf, qp}
-    T = { Transition(qp, end_delim, qf) }
+    T = { Transition(src=qp, olabel=end_delim, dest=qf) }
 
     # Interior transitions
     # xα -- x --> αy for each y
@@ -93,7 +109,7 @@ def right_context_acceptor(Sigma, length=1):
             if q2 == qf: continue
             for x in Sigma:
                 q1 = (x,) + prefix(q2, length)
-                T.add(Transition(q1, x, q2))
+                T.add(Transition(src=q1, olabel=x, dest=q2))
                 Qnew.add(q1)
         Q |= Qnew
 
@@ -101,7 +117,7 @@ def right_context_acceptor(Sigma, length=1):
     q0 = ('λ',)
     for q in Q:
         if q == qf: continue
-        T.add(Transition(q0, begin_delim, q))
+        T.add(Transition(src=q0, olabel=begin_delim, dest=q))
     Q.add(q0)
 
     A = FST(Q, T, q0, {qf})
@@ -112,7 +128,8 @@ def right_context_acceptor(Sigma, length=1):
 def intersect(M1, M2):
     """
     Intersect two FSTs
-    todo: speed up with label/state indexing
+    todo: speed up with label/state indexing; 
+    generalize with matcher
     """
     Q1, T1, q0_1, qf_1 = \
         M1.Q, M1.T, M1.q0, M1.qf
@@ -135,10 +152,10 @@ def intersect(M1, M2):
             q1, q2 = q
             if verbosity>0: print(q, '-->', q1, 'and', q2)
             for t1 in filter(lambda t: t.src == q1, T1):
-                x = t1.label
-                for t2 in filter(lambda t: t.src == q2 and t.label == x, T2):
+                x = t1.olabel
+                for t2 in filter(lambda t: t.src == q2 and t.olabel == x, T2):
                     r = (t1.dest, t2.dest)
-                    T.add(Transition(q, x, r))
+                    T.add(Transition(src=q, olabel=x, dest=r))
                     if r not in Q:
                         Qnew.add(r)
         Q.update(Qnew)
@@ -206,9 +223,9 @@ def reverse(M):
     qf = {M.q0}
     Q = {q0, qf}
 
-    T = { Transition(t.dest, t.label, t.src) for t in M.T }
+    T = { Transition(src=t.dest, olabel=t.olabel, dest=t.src) for t in M.T }
     for q1 in M.qf:
-        T.add( Transition(q0, epsilon, q1) )
+        T.add( Transition(src=q0, olabel=epsilon, dest=q1) )
     
     return FST(Q, T, q0, qf)
 
@@ -219,10 +236,24 @@ def flatten(M):
     see http://stackoverflow.com/questions/3204245/how-do-i-convert-a-tuple-of-tuples-to-a-one-dimensional-list-using-list-comprehe
     xxx define flatten_state() !
     """
-    T = { Transition(flatten_state(t.src), t.label, flatten_state(t.dest)) for t in T }
+    T = { Transition(src=flatten_state(t.src), olabel=t.olabel, dest=flatten_state(t.dest)) for t in T }
     q0 = flatten_state(q0)
 
     return sum(q[0:-1], ()) + (q[-1],)
+
+
+def linear_acceptor(x):
+    """
+    Linear acceptor for space-delimited string
+    """
+    Q = {0}
+    T = set()
+    x = x.split(' ')
+    for i in range(len(x)):
+        Q.add(i+1)
+        T.add(Transition(src=i, olabel=x[i], dest=i+1))
+    M = FST(Q, T, 0, {len(x)})
+    return M
 
 
 def trellis(max_len):
@@ -237,19 +268,19 @@ def trellis(max_len):
     Q, T = set(), set()
     q0 = 0; Q.add(q0)
     q1 = 1; Q.add(q1)
-    T.add(Transition(q0, begin_delim, q1))
+    T.add(Transition(src=q0, olabel=begin_delim, dest=q1))
 
     qe = max_len+1; Q.add(qe)
     qf = max_len+2; Q.add(qf)
-    T.add(Transition(qe, end_delim, qf))
+    T.add(Transition(src=qe, olabel=end_delim, dest=qf))
 
     for i in range(max_len):
         q = i + 1
         r = i + 2
         for x in Sigma:
             Q.add(r)
-            T.add(Transition(q, x, r))
-        T.add(Transition(q, end_delim, qf))
+            T.add(Transition(src=q, olabel=x, dest=r))
+        T.add(Transition(src=q, olabel=end_delim, dest=qf))
     return FST(Q, T, q0, {qf})
 
 
@@ -258,7 +289,8 @@ def map_states(M, f):
     Apply function f to each state
     """
     Q = { f(q) for q in M.Q }
-    T = { Transition(f(t.src), t.label, f(t.dest)) for t in M.T }
+    T = { Transition(src=f(t.src), olabel=t.olabel, dest=f(t.dest)) \
+            for t in M.T }
     q0 = f(M.q0)
     qf = {f(q) for q in M.qf}
     return FST(Q, T, q0, qf )
@@ -276,7 +308,7 @@ def accepted_strings(M, max_len):
         prefixes_new = set()
         for prefix in prefixes_old:
             for t in filter(lambda t: t.src == prefix[0], M.T):
-                prefixes_new.add( (t.dest, prefix[1]+' '+t.label) )
+                prefixes_new.add( (t.dest, prefix[1]+' '+t.olabel) )
         prefixes |= prefixes_new
         #print(i, prefixes_new); print()
 
@@ -286,7 +318,7 @@ def accepted_strings(M, max_len):
     return accepted
 
 
-def to_dot(M, fname):
+def draw(M, fname):
     """
     Print FST in dot/graphviz format
     xxx return string
@@ -308,23 +340,25 @@ def to_dot(M, fname):
         f.write(str(stateid[q]) + q_str)
     for t in T:
         try:
-            f.write(str(stateid[t.src]) +' -> '+ str(stateid[t.dest]) +' [label=\"' + str(t.label) + '\"]\n')
+            label = str(t.olabel) if t.ilabel == t.olabel \
+                else str(t.ilabel) +':'+ str(t.olabel)
+            f.write(str(stateid[t.src]) +' -> '+ str(stateid[t.dest]) +' [label=\"' + label + '\"]\n')
         except:
             pass
     f.write('}\n')
 
 
 # xxx testing
-if True:
+if 0:
     Sigma = ['a', 'b']
     config.Sigma = Sigma
     A_left = left_context_acceptor(Sigma, length=1)
-    to_dot(A_left, 'A_left.dot')
+    draw(A_left, 'A_left.dot')
     A_right = right_context_acceptor(Sigma, length=1)
-    to_dot(A_right, 'A_right.dot')
+    draw(A_right, 'A_right.dot')
 
 
-if False:
+if 0:
     verbosity = 1
     Sigma = ['a', 'b', 'c', 'd']
     config.Sigma = Sigma
