@@ -6,6 +6,7 @@ from . import fst_config as config
 verbosity = 0
 
 FST = namedtuple('FST', ['Q', 'T', 'q0', 'qf'])
+# State set, transition set, initial state, final state set
 
 class Transition():
     def __init__(self,
@@ -23,32 +24,34 @@ class Transition():
     def __repr__(self):
         return self.__str__()
 
-#Transition = namedtuple('Transition', ['src', 'label', 'dest'])
 
-def suffix(alpha, l):
+def suffix(x, l):
     """
-    Extract suffix of length (l-1)
+    Length-l suffix of tuple x
     """
-    if len(alpha) < l:
-        return alpha
-    else:
-        return alpha[1:]
+    if l < 1:
+        return ()
+    if len(x) < l:
+        return x
+    return x[-l:]
 
 
-def prefix(alpha, l):
+def prefix(x, l):
     """
-    Extract prefix of length (l-1)
+    Length-l prefix of tuple x
     """
-    if len(alpha) < l:
-        return alpha
-    else:
-        return alpha[:-1]
+    if l < 1:
+        return ()
+    if len(x) < l:
+        return x
+    return x[:l]
 
 
 def left_context_acceptor(Sigma, length=1):
     """
-    Construct acceptor (identity transducer) for segments 
-    in immediately preceding contexts
+    Acceptor (identity transducer) for segments 
+    in immediately preceding contexts (histories)
+    of specified length
     """
     begin_delim, end_delim = \
         config.begin_delim, config.end_delim
@@ -67,7 +70,7 @@ def left_context_acceptor(Sigma, length=1):
         for q1 in Qold:
             if q1 == q0: continue
             for x in Sigma:
-                q2 = suffix(q1,length) + (x,)
+                q2 = suffix(q1, length-1) + (x,)
                 T.add(Transition(src=q1, olabel=x, dest=q2))
                 Qnew.add(q2)
         Q |= Qnew
@@ -76,7 +79,7 @@ def left_context_acceptor(Sigma, length=1):
     qf = set()
     for q1 in Q:
         if q1 == q0: continue
-        q2 = suffix(q1,length) + (end_delim,)
+        q2 = suffix(q1, length-1) + (end_delim,)
         T.add(Transition(src=q1, olabel=end_delim, dest=q2))
         qf.add(q2)
     Q |= qf
@@ -88,8 +91,9 @@ def left_context_acceptor(Sigma, length=1):
 
 def right_context_acceptor(Sigma, length=1):
     """
-    Construct acceptor (identity transducer) for segments 
-    in immediately following contexts
+    Acceptor (identity transducer) for segments 
+    in immediately following contexts (futures) 
+    of specified length
     """
     begin_delim, end_delim = \
         config.begin_delim, config.end_delim
@@ -108,7 +112,7 @@ def right_context_acceptor(Sigma, length=1):
         for q2 in Qold:
             if q2 == qf: continue
             for x in Sigma:
-                q1 = (x,) + prefix(q2, length)
+                q1 = (x,) + prefix(q2, length-1)
                 T.add(Transition(src=q1, olabel=x, dest=q2))
                 Qnew.add(q1)
         Q |= Qnew
@@ -127,9 +131,10 @@ def right_context_acceptor(Sigma, length=1):
 
 def intersect(M1, M2):
     """
-    Intersect two FSTs
-    todo: speed up with label/state indexing; 
-    generalize with matcher
+    Intersect two FSTs, retaining contextual info from  
+    the original machines by explicitly representing 
+    each state q in the intersection as a pair (q1,q2)
+    todo: matchers as in OpenFST
     """
     Q1, T1, q0_1, qf_1 = \
         M1.Q, M1.T, M1.q0, M1.qf
@@ -147,7 +152,6 @@ def intersect(M1, M2):
     while len(Qnew) != 0:
         Qold = set(Qnew)
         Qnew.clear()
-        #print(Qold)
         for q in Qold:
             q1, q2 = q
             if verbosity>0: print(q, '-->', q1, 'and', q2)
@@ -159,7 +163,6 @@ def intersect(M1, M2):
                     if r not in Q:
                         Qnew.add(r)
         Q.update(Qnew)
-    #print(len(Q), len(T))
     M = trim(FST(Q, T, q0, qf))
     return M
 
@@ -210,41 +213,9 @@ def trim(M):
     return M_trim
 
 
-def reverse(M):
-    """
-    Reverse FST, retaining delimiter semantics
-    """
-    begin_delim, end_delim, epsilon = \
-        config.begin_delim, config.end_delim, \
-        config.epsilon
-
-    # Reverse
-    q0 = ('λ2',)
-    qf = {M.q0}
-    Q = {q0, qf}
-
-    T = { Transition(src=t.dest, olabel=t.olabel, dest=t.src) for t in M.T }
-    for q1 in M.qf:
-        T.add( Transition(src=q0, olabel=epsilon, dest=q1) )
-    
-    return FST(Q, T, q0, qf)
-
-
-def flatten(M):
-    """
-    Flatten states of FST (e.g., after intersection)
-    see http://stackoverflow.com/questions/3204245/how-do-i-convert-a-tuple-of-tuples-to-a-one-dimensional-list-using-list-comprehe
-    xxx define flatten_state() !
-    """
-    T = { Transition(src=flatten_state(t.src), olabel=t.olabel, dest=flatten_state(t.dest)) for t in T }
-    q0 = flatten_state(q0)
-
-    return sum(q[0:-1], ()) + (q[-1],)
-
-
 def linear_acceptor(x):
     """
-    Linear acceptor for space-delimited string
+    Linear acceptor for space-delimited string x
     """
     Q = {0}
     T = set()
@@ -259,7 +230,7 @@ def linear_acceptor(x):
 def trellis(max_len):
     """
     Trellis for strings of length 0 to max_len
-    (begin/end delimiters not included in lengths)
+    (not counting begin/end delimiters)
     """
     begin_delim = config.begin_delim
     end_delim = config.end_delim
@@ -298,8 +269,8 @@ def map_states(M, f):
 
 def accepted_strings(M, max_len):
     """
-    Accepted strings up to maximum length 
-    (not including begin/end delimiters)
+    Output strings accepted by machine up to 
+    maximum length (not counting begin/end delimiters)
     """
     prefixes = { (M.q0, '') }
     prefixes_new = prefixes.copy()
@@ -320,8 +291,7 @@ def accepted_strings(M, max_len):
 
 def draw(M, fname):
     """
-    Print FST in dot/graphviz format
-    xxx return string
+    Print FST to file in dot/graphviz format
     """
     Q, T, q0, qf = M.Q, M.T, M.q0, M.qf
     stateid = {q:i for i,q in enumerate(Q)}
@@ -348,20 +318,10 @@ def draw(M, fname):
     f.write('}\n')
 
 
-# xxx testing
+# Examples
 if 0:
-    Sigma = ['a', 'b']
-    config.Sigma = Sigma
-    A_left = left_context_acceptor(Sigma, length=1)
+    config.Sigma = ['a', 'b']
+    A_left = left_context_acceptor(config.Sigma, length=1)
     draw(A_left, 'A_left.dot')
-    A_right = right_context_acceptor(Sigma, length=1)
+    A_right = right_context_acceptor(config.Sigma, length=1)
     draw(A_right, 'A_right.dot')
-
-
-if 0:
-    verbosity = 1
-    Sigma = ['a', 'b', 'c', 'd']
-    config.Sigma = Sigma
-    #projections = [Sigma, ['a','b']]    # segmental projection must be first!
-    projections = [Sigma, ['a','b']]
-    [Q, T, q0, qf] = FST(Sigma, projections[1])
