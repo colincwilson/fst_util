@@ -1,0 +1,21 @@
+digraph G {
+rankdir=LR;
+0 [style=solid, shape=circle, label="<"]
+1 [style=solid, shape=circle, label="b"]
+2 [style=solid, shape=circle, label="c"]
+3 [style=bold, shape=circle, label="λ1"]
+4 [style=solid, shape=doublecircle, label="λ2"]
+3 -> 1 [style=solid, label=">"]
+1 -> 0 [style=solid, label="b"]
+2 -> 2 [style=dotted, label="a"]
+2 -> 1 [style=solid, label="c"]
+0 -> 0 [style=dotted, label="a"]
+0 -> 4 [style=solid, label="<"]
+1 -> 1 [style=solid, label="b"]
+3 -> 2 [style=solid, label=">"]
+1 -> 1 [style=dotted, label="a"]
+1 -> 2 [style=solid, label="b"]
+2 -> 0 [style=solid, label="c"]
+3 -> 0 [style=solid, label=">"]
+2 -> 2 [style=solid, label="c"]
+}
