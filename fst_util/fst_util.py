@@ -3,24 +3,31 @@
 import itertools, re, string, sys
 from collections import namedtuple
 from . import fst_config as config
+
 verbosity = 0
 
 FST = namedtuple('FST', ['Q', 'T', 'q0', 'qf'])
 # State set, transition set, initial state, final state set
 
+
 class Transition():
+
     def __init__(self,
-        src=None, ilabel=None, olabel=None, weight=None, dest=None):
+                 src=None,
+                 ilabel=None,
+                 olabel=None,
+                 weight=None,
+                 dest=None):
         self.src = src
         self.ilabel = ilabel if ilabel is not None else olabel
         self.olabel = olabel if olabel is not None else ilabel
         self.weight = weight
         self.dest = dest
-    
+
     def __str__(self):
         return '('+ str(self.src) +','+ str(self.ilabel) \
                 +','+ str(self.olabel) +','+ str(self.dest) +')'
-    
+
     def __repr__(self):
         return self.__str__()
 
@@ -64,41 +71,43 @@ def left_context_acceptor(length=1, Sigma_tier=None):
 
     # Initial state and outgoing transition
     q0 = ('λ1',)
-    q1 = (epsilon,)*(length-1) + (begin_delim,)
+    q1 = (epsilon,) * (length - 1) + (begin_delim,)
     Q = {q0, q1}
-    T = { Transition(src = q0, olabel = begin_delim, dest = q1) }
+    T = {Transition(src=q0, olabel=begin_delim, dest=q1)}
 
     # Interior transitions
     # xα -- y --> αy for each y
     Qnew = set(Q)
-    for l in range(length+1):
+    for l in range(length + 1):
         Qold = set(Qnew)
         Qnew = set()
         for q1 in Qold:
-            if q1 == q0: continue
+            if q1 == q0:
+                continue
             for x in Sigma_tier:
-                q2 = suffix(q1, length-1) + (x,)
-                T.add(Transition(src = q1, olabel = x, dest = q2))
+                q2 = suffix(q1, length - 1) + (x,)
+                T.add(Transition(src=q1, olabel=x, dest=q2))
                 Qnew.add(q2)
         Q |= Qnew
-    
+
     # Final state and incoming transitions
     qf = ('λ2',)
     for q1 in Q:
-        if q1 == q0: continue
-        T.add(Transition(src = q1, olabel = end_delim, dest = qf))
+        if q1 == q0:
+            continue
+        T.add(Transition(src=q1, olabel=end_delim, dest=qf))
         #q2 = suffix(q1, length-1) + (end_delim,)
         #T.add(Transition(src=q1, olabel=end_delim, dest=q2))
         #qf.add(q2)
     Q.add(qf)
 
-    # Self-transitions labeled by skipped symbols 
+    # Self-transitions labeled by skipped symbols
     # on interior states
     for q in Q:
         if (q == q0) or (q == qf):
             continue
         for x in Sigma_skip:
-            T.add(Transition(src = q, olabel = x, dest = q))
+            T.add(Transition(src=q, olabel=x, dest=q))
 
     A = FST(Q, T, q0, {qf})
     A_trim = connect(A)
@@ -122,38 +131,40 @@ def right_context_acceptor(length=1, Sigma_tier=None):
 
     # Final state and incoming transition
     qf = ('λ2',)
-    qp = (end_delim,) + (epsilon,)*(length-1)
+    qp = (end_delim,) + (epsilon,) * (length - 1)
     Q = {qf, qp}
-    T = { Transition(src = qp, olabel = end_delim, dest = qf) }
+    T = {Transition(src=qp, olabel=end_delim, dest=qf)}
 
     # Interior transitions
     # xα -- x --> αy for each y
     Qnew = set(Q)
-    for l in range(length+1):
+    for l in range(length + 1):
         Qold = set(Qnew)
         Qnew = set()
         for q2 in Qold:
-            if q2 == qf: continue
+            if q2 == qf:
+                continue
             for x in Sigma_tier:
-                q1 = (x,) + prefix(q2, length-1)
-                T.add(Transition(src = q1, olabel = x, dest = q2))
+                q1 = (x,) + prefix(q2, length - 1)
+                T.add(Transition(src=q1, olabel=x, dest=q2))
                 Qnew.add(q1)
         Q |= Qnew
 
     # Initial state and outgoing transitions
     q0 = ('λ1',)
     for q in Q:
-        if q == qf: continue
-        T.add(Transition(src = q0, olabel = begin_delim, dest = q))
+        if q == qf:
+            continue
+        T.add(Transition(src=q0, olabel=begin_delim, dest=q))
     Q.add(q0)
 
-    # Self-transitions labeled by skipped symbols 
+    # Self-transitions labeled by skipped symbols
     # on interior states
     for q in Q:
         if (q == q0) or (q == qf):
             continue
         for x in Sigma_skip:
-            T.add(Transition(src = q, olabel = x, dest = q))
+            T.add(Transition(src=q, olabel=x, dest=q))
 
     A = FST(Q, T, q0, {qf})
     A_trim = connect(A)
@@ -173,14 +184,14 @@ def intersect(M1, M2):
         M2.Q, M2.T, M2.q0, M2.qf
 
     # Index transitions by source state in each machine
-    transition_map1 = {q1:[] for q1 in Q1}
-    transition_map2 = {q2:[] for q2 in Q2}
+    transition_map1 = {q1: [] for q1 in Q1}
+    transition_map2 = {q2: [] for q2 in Q2}
     for t1 in T1:
         transition_map1[t1.src].append(t1)
     for t2 in T2:
         transition_map2[t2.src].append(t2)
 
-    # States, transitions, initil state, final states
+    # States, transitions, initial state, final states
     # of intersection
     Q = set()
     T = set()
@@ -201,7 +212,7 @@ def intersect(M1, M2):
                     if t2.olabel != t1.olabel:
                         continue
                     r = (t1.dest, t2.dest)
-                    T.add(Transition(src = q, olabel = t1.olabel, dest = r))
+                    T.add(Transition(src=q, olabel=t1.olabel, dest=r))
                     if r not in Qnew and r not in Q:
                         Qnew.add(r)
         Q.update(Qnew)
@@ -215,7 +226,7 @@ def connect(M):
     Remove dead states and transitions from FST M
     """
     # Forward pass
-    forward_transitions = {q:[] for q in M.Q}
+    forward_transitions = {q: [] for q in M.Q}
     for t in M.T:
         forward_transitions[t.src].append(t)
 
@@ -236,10 +247,10 @@ def connect(M):
             if (t.src in Q) and (t.dest in Q)}
 
     # Backward pass
-    backward_transitions = {q:[] for q in Q}
+    backward_transitions = {q: [] for q in Q}
     for t in T:
         backward_transitions[t.dest].append(t)
-    
+
     Qbackward = {q for q in M.qf}
     Qold, Qnew = set(), {q for q in M.qf}
     while len(Qnew) != 0:
@@ -270,8 +281,8 @@ def linear_acceptor(x):
     T = set()
     x = x.split(' ')
     for i in range(len(x)):
-        Q.add(i+1)
-        T.add(Transition(src = i, olabel = x[i], dest = i+1))
+        Q.add(i + 1)
+        T.add(Transition(src=i, olabel=x[i], dest=i + 1))
     M = FST(Q, T, 0, {len(x)})
     return M
 
@@ -286,21 +297,25 @@ def trellis(max_len):
     Sigma = config.Sigma
 
     Q, T = set(), set()
-    q0 = 0; Q.add(q0)
-    q1 = 1; Q.add(q1)
-    T.add(Transition(src = q0, olabel = begin_delim, dest = q1))
+    q0 = 0
+    Q.add(q0)
+    q1 = 1
+    Q.add(q1)
+    T.add(Transition(src=q0, olabel=begin_delim, dest=q1))
 
-    qe = max_len+1; Q.add(qe)
-    qf = max_len+2; Q.add(qf)
-    T.add(Transition(src = qe, olabel = end_delim, dest = qf))
+    qe = max_len + 1
+    Q.add(qe)
+    qf = max_len + 2
+    Q.add(qf)
+    T.add(Transition(src=qe, olabel=end_delim, dest=qf))
 
     for i in range(max_len):
         q = i + 1
         r = i + 2
         for x in Sigma:
             Q.add(r)
-            T.add(Transition(src = q, olabel = x, dest = r))
-        T.add(Transition(src = q, olabel = end_delim, dest = qf))
+            T.add(Transition(src=q, olabel=x, dest=r))
+        T.add(Transition(src=q, olabel=end_delim, dest=qf))
     return FST(Q, T, q0, {qf})
 
 
@@ -309,12 +324,12 @@ def map_states(M, f):
     Apply function f to each state (e.g., to simplify 
     state labels after intersection)
     """
-    Q = { f(q) for q in M.Q }
+    Q = {f(q) for q in M.Q}
     T = { Transition(src = f(t.src), olabel = t.olabel, dest = f(t.dest)) \
             for t in M.T }
     q0 = f(M.q0)
     qf = {f(q) for q in M.qf}
-    return FST(Q, T, q0, qf )
+    return FST(Q, T, q0, qf)
 
 
 def accepted_strings(M, max_len):
@@ -322,24 +337,24 @@ def accepted_strings(M, max_len):
     Output strings accepted by machine up to 
     maximum length (not counting begin/end delimiters)
     """
-    transition_map = {q:[] for q in M.Q}
+    transition_map = {q: [] for q in M.Q}
     for t in M.T:
         transition_map[t.src].append(t)
 
-    prefixes = { (M.q0, '') }
+    prefixes = {(M.q0, '')}
     prefixes_new = prefixes.copy()
-    for i in range(max_len+2):
+    for i in range(max_len + 2):
         prefixes_old = set(prefixes_new)
         prefixes_new = set()
         for prefix in prefixes_old:
             for t in transition_map[prefix[0]]:
-                prefixes_new.add( (t.dest, prefix[1]+' '+t.olabel) )
+                prefixes_new.add((t.dest, prefix[1] + ' ' + t.olabel))
         prefixes |= prefixes_new
         #print(i, prefixes_new); print()
 
     accepted = { prefix for (state, prefix) in prefixes \
                     if re.search(config.end_delim+'$', prefix) }
-    accepted = { re.sub('^ ', '', prefix) for prefix in accepted }
+    accepted = {re.sub('^ ', '', prefix) for prefix in accepted}
     return accepted
 
 
@@ -359,7 +374,7 @@ def draw(M, fname, Sigma_tier=None):
     f.write('rankdir=LR;\n')
 
     # Write states
-    stateid = {q:i for i,q in enumerate(Q)}
+    stateid = {q: i for i, q in enumerate(Q)}
     for q in stateid:
         if isinstance(q, tuple):
             label = ' '.join([str(x) for x in q])
@@ -370,7 +385,7 @@ def draw(M, fname, Sigma_tier=None):
         shape = 'doublecircle' if q in qf \
             else 'circle'
         f.write(f'{str(stateid[q])} [style={style}, '
-            f'shape={shape}, label=\"{label}\"]\n')
+                f'shape={shape}, label=\"{label}\"]\n')
 
     # Write transitions
     for t in T:
