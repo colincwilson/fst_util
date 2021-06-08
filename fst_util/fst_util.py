@@ -63,17 +63,17 @@ def left_context_acceptor(length=1, Sigma_tier=None):
     are tracked (other members of Sigma are skipped, 
     i.e., label self-loops on each interior state)
     """
-    begin_delim, end_delim, epsilon = \
-        config.begin_delim, config.end_delim, config.epsilon
+    bos, eos, epsilon = \
+        config.bos, config.eos, config.epsilon
     if Sigma_tier is None:
         Sigma_tier = config.Sigma
     Sigma_skip = config.Sigma - Sigma_tier
 
     # Initial state and outgoing transition
     q0 = ('λ1',)
-    q1 = (epsilon,) * (length - 1) + (begin_delim,)
+    q1 = (epsilon,) * (length - 1) + (bos,)
     Q = {q0, q1}
-    T = {Transition(src=q0, olabel=begin_delim, dest=q1)}
+    T = {Transition(src=q0, olabel=bos, dest=q1)}
 
     # Interior transitions
     # xα -- y --> αy for each y
@@ -95,9 +95,9 @@ def left_context_acceptor(length=1, Sigma_tier=None):
     for q1 in Q:
         if q1 == q0:
             continue
-        T.add(Transition(src=q1, olabel=end_delim, dest=qf))
-        #q2 = suffix(q1, length-1) + (end_delim,)
-        #T.add(Transition(src=q1, olabel=end_delim, dest=q2))
+        T.add(Transition(src=q1, olabel=eos, dest=qf))
+        #q2 = suffix(q1, length-1) + (eos,)
+        #T.add(Transition(src=q1, olabel=eos, dest=q2))
         #qf.add(q2)
     Q.add(qf)
 
@@ -123,17 +123,17 @@ def right_context_acceptor(length=1, Sigma_tier=None):
     are tracked (other members of Sigma are skipped, 
     i.e., label self-loops on each interior state)
     """
-    begin_delim, end_delim, epsilon = \
-        config.begin_delim, config.end_delim, config.epsilon
+    bos, eos, epsilon = \
+        config.bos, config.eos, config.epsilon
     if Sigma_tier is None:
         Sigma_tier = config.Sigma
     Sigma_skip = config.Sigma - Sigma_tier
 
     # Final state and incoming transition
     qf = ('λ2',)
-    qp = (end_delim,) + (epsilon,) * (length - 1)
+    qp = (eos,) + (epsilon,) * (length - 1)
     Q = {qf, qp}
-    T = {Transition(src=qp, olabel=end_delim, dest=qf)}
+    T = {Transition(src=qp, olabel=eos, dest=qf)}
 
     # Interior transitions
     # xα -- x --> αy for each y
@@ -155,7 +155,7 @@ def right_context_acceptor(length=1, Sigma_tier=None):
     for q in Q:
         if q == qf:
             continue
-        T.add(Transition(src=q0, olabel=begin_delim, dest=q))
+        T.add(Transition(src=q0, olabel=bos, dest=q))
     Q.add(q0)
 
     # Self-transitions labeled by skipped symbols
@@ -292,8 +292,8 @@ def trellis(max_len):
     Trellis for strings of length 0 to max_len
     (not counting begin/end delimiters)
     """
-    begin_delim = config.begin_delim
-    end_delim = config.end_delim
+    bos = config.bos
+    eos = config.eos
     Sigma = config.Sigma
 
     Q, T = set(), set()
@@ -301,13 +301,13 @@ def trellis(max_len):
     Q.add(q0)
     q1 = 1
     Q.add(q1)
-    T.add(Transition(src=q0, olabel=begin_delim, dest=q1))
+    T.add(Transition(src=q0, olabel=bos, dest=q1))
 
     qe = max_len + 1
     Q.add(qe)
     qf = max_len + 2
     Q.add(qf)
-    T.add(Transition(src=qe, olabel=end_delim, dest=qf))
+    T.add(Transition(src=qe, olabel=eos, dest=qf))
 
     for i in range(max_len):
         q = i + 1
@@ -315,7 +315,7 @@ def trellis(max_len):
         for x in Sigma:
             Q.add(r)
             T.add(Transition(src=q, olabel=x, dest=r))
-        T.add(Transition(src=q, olabel=end_delim, dest=qf))
+        T.add(Transition(src=q, olabel=eos, dest=qf))
     return FST(Q, T, q0, {qf})
 
 
@@ -353,7 +353,7 @@ def accepted_strings(M, max_len):
         #print(i, prefixes_new); print()
 
     accepted = { prefix for (state, prefix) in prefixes \
-                    if re.search(config.end_delim+'$', prefix) }
+                    if re.search(config.eos+'$', prefix) }
     accepted = {re.sub('^ ', '', prefix) for prefix in accepted}
     return accepted
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-begin_delim = '>' # '>' | '⋊' | <w>
-end_delim = '<' # '< | '⋉' | </w>
-epsilon = 'ε' # <eps>
-Sigma = None # set of ordinary symbols
+epsilon = 'ϵ'  # <eps>
+bos = '⋊'  # '>' | <s>
+eos = '⋉'  # '<' | </s>
+Sigma = None  # set of ordinary symbols
