@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import pynini
+from pynini import SymbolTable
 
 epsilon = 'ϵ'  # <eps>
 bos = '⋊'  # '>' | <s>
@@ -13,7 +13,7 @@ symtable = None
 def init(sigma_syms, special_syms=[]):
     global syms, sigma, symtable
     sigma = sigma_syms[:]
-    symtable = pynini.SymbolTable()
+    symtable = SymbolTable()
     symtable.add_symbol(epsilon)
     symtable.add_symbol(bos)
     symtable.add_symbol(eos)

@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from pathlib import Path
 import pynini
-
-sys.path.append(str(Path.home() / 'Code/Python/phon'))
-from phon.str_util import prefix, suffix
-from fst_util import fst_config as config
+from . import fst_config  # xxx
 
 
 class Fst(pynini.Fst):
@@ -25,6 +21,7 @@ class Fst(pynini.Fst):
         self._label2state = {}  # Label -> state id
 
     def add_state(self, state_label=None):
+        """ Add new state, optionally specifying its label """
         # Enforce unique labels
         if state_label is not None:
             if state_label in self._label2state:
@@ -34,12 +31,13 @@ class Fst(pynini.Fst):
         # Self-labeling by default
         if state_label is None:
             state_label = state
-        # Register state with label
+        # State <-> label
         self._state2label[state] = state_label
         self._label2state[state_label] = state
         return state
 
     def add_arc(self, src, ilabel, olabel=None, weight=None, dest=None):
+        """ Add arc (accepts int or string attributes) """
         if not isinstance(src, int):
             src = self._label2state[src]
         if not isinstance(dest, int):
@@ -92,7 +90,7 @@ class Fst(pynini.Fst):
         accessible = self.accessible(forward=True)
         coaccessible = self.accessible(forward=False)
         live_states = accessible & coaccessible
-        dead_states = [q for q in self.states() if q not in live_states]
+        dead_states = filter(lambda q: q not in live_states, self.states())
         fst = self._delete_states(dead_states)
         return fst
 
@@ -127,13 +125,10 @@ class Fst(pynini.Fst):
         while len(Q_new) != 0:
             Q_old, Q_new = Q_new, Q_old
             Q_new.clear()
-            for src in Q_old:
-                if src not in T:
-                    continue
-                for dest in T[src]:
-                    if dest not in Q:
-                        Q.add(dest)
-                        Q_new.add(dest)
+            for src in filter(lambda src: src in T, Q_old):
+                for dest in filter(lambda dest: dest not in Q, T[src]):
+                    Q.add(dest)
+                    Q_new.add(dest)
         return Q
 
     def delete_states(self, dead_states):
@@ -148,12 +143,10 @@ class Fst(pynini.Fst):
         Remove states while preserving labels [nondestructive]
         """
         fst = Fst(self.input_symbols())
-        # Copy live states with labels
+        # Reindex live states, copying labels
         state_map = {}
         q0 = self.start()
-        for q in self.states():
-            if q in dead_states:
-                continue
+        for q in filter(lambda q: q not in dead_states, self.states()):
             q_label = self._state2label[q]
             q_new = fst.add_state(q_label)
             state_map[q] = q_new
@@ -161,13 +154,10 @@ class Fst(pynini.Fst):
                 fst.set_start(q_new)
             fst.set_final(q_new, self.final(q))
         # Copy transitions between live states
-        for q in self.states():
-            if q in dead_states:
-                continue
+        for q in filter(lambda q: q not in dead_states, self.states()):
             src = state_map[q]
-            for t in self.arcs(q):
-                if t.nextstate in dead_states:
-                    continue
+            for t in filter(lambda t: t.nextstate not in dead_states,
+                            self.arcs(q)):
                 dest = state_map[t.nextstate]
                 fst.add_arc(src, t.ilabel, t.olabel, t.weight, dest)
         return fst
@@ -184,26 +174,26 @@ class Fst(pynini.Fst):
                 dead_arcs_[src].append(t)
             else:
                 dead_arcs_[src] = [t]
-        for q in self.states():
+        # Process states with dead arcs
+        for q in filter(lambda q: q in dead_arcs_, self.states()):
             # Remove all arcs from state
             arcs = [t for t in self.arcs(q)]
             super(Fst, self).delete_arcs(q)
-            # Add live arcs
+            # Add back live arcs
             for t1 in arcs:
                 live = True
-                if q in dead_arcs_:
-                    for t2 in dead_arcs_[q]:
-                        if arc_equal(t1, t2):  # xxx
-                            live = False
-                            break
-                if not live:
-                    continue
-                self.add_arc(q, t1.ilabel, t1.olabel, t1.weight, t1.nextstate)
+                for t2 in dead_arcs_[q]:
+                    if arc_equal(t1, t2):  # xxx
+                        live = False
+                        break
+                if live:
+                    self.add_arc(q, t1.ilabel, t1.olabel, t1.weight,
+                                 t1.nextstate)
         return self
 
     def num_arcs(self):
         """
-        Total number of arcs from all states
+        Total count of arcs from all states
         """
         val = 0
         for state in self.states():
@@ -247,9 +237,9 @@ def arc_equal(arc1, arc2):
 def compose(fst1, fst2):
     """
     FST composition, retaining contextual info from original machines by labeling each state q = (q1, q2) with (label(q1), label(q2))
-    todo: matcher options as in OpenFST
+    todo: matcher options
     """
-    fst = Fst(config.symtable)
+    fst = Fst(fst_config.symtable)
     One = pynini.Weight.one(fst.weight_type())
     # xxx arcsort(), mutable_arcs(), final(), start(), states()
 
@@ -323,15 +313,15 @@ def left_context_acceptor(context_length=1, sigma_tier=None):
     """
     Acceptor (identity transducer) for segments in immediately precedin contexts (histories) of specified length. If Sigma_tier is specified as  a subset of Sigma, only contexts over Sigma_tier are tracked (other member of Sigma are skipped, i.e., label self-loops on each interior state)
     """
-    epsilon = config.epsilon
-    bos = config.bos
-    eos = config.eos
+    epsilon = fst_config.epsilon
+    bos = fst_config.bos
+    eos = fst_config.eos
     if sigma_tier is None:
-        sigma_tier = set(config.sigma)
+        sigma_tier = set(fst_config.sigma)
         sigma_skip = set()
     else:
-        sigma_skip = set(config.sigma) - sigma_tier
-    fst = Fst(config.symtable)
+        sigma_skip = set(fst_config.sigma) - sigma_tier
+    fst = Fst(fst_config.symtable)
 
     # Initial and peninitial states
     q0 = ('λ',)
@@ -352,7 +342,7 @@ def left_context_acceptor(context_length=1, sigma_tier=None):
             if q1 == q0:
                 continue
             for x in sigma_tier:
-                q2 = suffix(q1, context_length - 1) + (x,)
+                q2 = _suffix(q1, context_length - 1) + (x,)
                 fst.add_state(q2)
                 fst.add_arc(src=q1, ilabel=x, dest=q2)
                 Qnew.add(q2)
@@ -385,15 +375,15 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
     """
     Acceptor (identity transducer) for segments in immediately following contexts (futures) of specified length. If Sigma_tier is specified as a subset of Sigma, only contexts over Sigma_tier are tracked (other members of Sigma are skipped, i.e., label self-loops on each interior state)
     """
-    epsilon = config.epsilon
-    bos = config.bos
-    eos = config.eos
+    epsilon = fst_config.epsilon
+    bos = fst_config.bos
+    eos = fst_config.eos
     if sigma_tier is None:
-        sigma_tier = set(config.sigma)
+        sigma_tier = set(fst_config.sigma)
         sigma_skip = set()
     else:
-        sigma_skip = set(config.sigma) - sigma_tier
-    fst = Fst(config.symtable)
+        sigma_skip = set(fst_config.sigma) - sigma_tier
+    fst = Fst(fst_config.symtable)
 
     # Final and penultimate state
     qf = ('λ',)
@@ -414,7 +404,7 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
             if q2 == qf:
                 continue
             for x in sigma_tier:
-                q1 = (x,) + prefix(q2, context_length - 1)
+                q1 = (x,) + _prefix(q2, context_length - 1)
                 fst.add_state(q1)
                 fst.add_arc(src=q1, ilabel=x, dest=q2)
                 Qnew.add(q1)
@@ -440,6 +430,24 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
 
     #fst = fst.connect() # xxx handle state relabeling
     return fst
+
+
+def _prefix(x, l):
+    """ Length-l prefix of tuple x """
+    if l < 1:
+        return ()
+    if len(x) < l:
+        return x
+    return x[:l]
+
+
+def _suffix(x, l):
+    """ Length-l suffix of string/tuple x """
+    if l < 1:
+        return ()
+    if len(x) < l:
+        return x
+    return x[-l:]
 
 
 # # # # # Deprecated # # # # #

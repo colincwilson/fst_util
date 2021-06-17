@@ -1,15 +1,15 @@
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path('../fst_util')))
-import fst_config as config
-from fst_util import *
+sys.path.append(str(Path.home() / 'Code/Python/fst_util'))
+from fst_util import fst_config
+from fst_util.fst import *
 
 
 def test():
     # State labels
-    config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
-    fst = Fst(config.symtable)
+    fst_config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
+    fst = Fst(fst_config.symtable)
     for sym in ['λ', '⋊', 'A', 'B']:
         fst.add_state(sym)
     fst.set_start('λ')
@@ -24,7 +24,7 @@ def test():
     fst.draw('tmp.dot')
 
     # Left- and right- context acceptors
-    config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
+    fst_config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
     L = left_context_acceptor(context_length=2)
     L.draw('L.dot')
     R = right_context_acceptor(context_length=2)
@@ -34,7 +34,7 @@ def test():
     print(accepted_strings(L, 'input', 4))
 
     # Connect with state labels preserved
-    C = Fst(config.symtable)
+    C = Fst(fst_config.symtable)
     qf = C.add_state('0')
     q = C.add_state('1')
     q0 = C.add_state('2')
@@ -49,8 +49,8 @@ def test():
     C_trim.draw('C_trim.dot')
 
     # Composition
-    config.init(sigma_syms=['a', 'b'])
-    M1 = Fst(config.symtable)  # a*b*
+    fst_config.init(sigma_syms=['a', 'b'])
+    M1 = Fst(fst_config.symtable)  # a*b*
     for q in [0, 1]:
         M1.add_state(q)
     M1.set_start(0)
@@ -59,7 +59,7 @@ def test():
     M1.add_arc(src=0, ilabel='b', dest=1)
     M1.add_arc(src=1, ilabel='b', dest=1)
 
-    M2 = Fst(config.symtable)  # ab*
+    M2 = Fst(fst_config.symtable)  # ab*
     for q in [0, 1]:
         M2.add_state(q)
     M2.set_start(0)
@@ -70,8 +70,8 @@ def test():
     M.draw('M.dot')
 
     # Arc deletion
-    config.init(sigma_syms=['a', 'b'])
-    fst = Fst(config.symtable)
+    fst_config.init(sigma_syms=['a', 'b'])
+    fst = Fst(fst_config.symtable)
     for q in [0, 1]:
         fst.add_state(q)
     fst.set_start(0)
