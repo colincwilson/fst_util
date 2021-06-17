@@ -10,7 +10,7 @@ sigma = None  # Ordinary symbols
 symtable = None
 
 
-def init(sigma_syms, special_syms=None):
+def init(sigma_syms, special_syms=[]):
     global syms, sigma, symtable
     sigma = sigma_syms[:]
     symtable = pynini.SymbolTable()

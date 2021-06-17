@@ -1,45 +1,85 @@
 import sys
-sys.path.append('..')
-from fst_util import fst_config, fst_util
+from pathlib import Path
 
-# Left-/right- context acceptors
-fst_config.Sigma = {'a', 'b', 'c'}
+sys.path.append(str(Path('../fst_util')))
+import fst_config as config
+from fst_util import *
 
-M_left = fst_util.left_context_acceptor(length=2)
-fst_util.draw(M_left, 'M_left.dot')
-# dot -Tpdf M_left.dot > M_left.pdf
 
-M_right = fst_util.right_context_acceptor(length=2)
-fst_util.draw(M_right, 'M_right.dot')
-# dot -Tpdf M_right.dot > M_right.pdf
+def test():
+    # State labels
+    config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
+    fst = Fst(config.symtable)
+    for sym in ['λ', '⋊', 'A', 'B']:
+        fst.add_state(sym)
+    fst.set_start('λ')
+    for sym in ['A', 'B']:
+        fst.set_final(sym)
+    fst.add_arc(src='λ', ilabel='⋊', dest='⋊')
+    fst.add_arc(src='⋊', ilabel='a', dest='A')
+    fst.add_arc(src='⋊', ilabel='b', dest='B')
+    fst.add_arc(src='A', ilabel='a', olabel='a', dest='A')
+    fst.add_arc(src='A', ilabel='a', olabel='b', dest='B')
+    #print(fst.print(acceptor=True, show_weight_one=True))
+    fst.draw('tmp.dot')
 
-Sigma_tier = {'a', 'b'}
-M_left_tier = fst_util.left_context_acceptor(length=2, Sigma_tier=Sigma_tier)
-fst_util.draw(M_left_tier, 'M_left_tier.dot', Sigma_tier)
-# dot -Tpdf M_left_tier.dot > M_left_tier.pdf
+    # Left- and right- context acceptors
+    config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
+    L = left_context_acceptor(context_length=2)
+    L.draw('L.dot')
+    R = right_context_acceptor(context_length=2)
+    R.draw('R.dot')
 
-Sigma_tier = {'b', 'c'}
-M_right_tier = fst_util.right_context_acceptor(length=1, Sigma_tier=Sigma_tier)
-M_right_tier = fst_util.map_states(M_right_tier, lambda q : q[0])
-fst_util.draw(M_right_tier, 'M_right_tier.dot', Sigma_tier)
-# dot -Tpdf M_right_tier.dot > M_right_tier.pdf
+    # Accepted strings
+    print(accepted_strings(L, 'input', 4))
 
-# Right-to-left nasal spreading
-fst_config.Sigma = {'N', 'V', 'Vn'}
-M_right = fst_util.right_context_acceptor(1)
-nodes_ill = []
-for t in M_right.T:
-    if t.olabel == 'V':
-        if t.dest[0] in ['N', 'Vn']:
-            nodes_ill.append(t)
-    elif t.olabel == 'Vn':
-        if t.dest[0] not in ['N', 'Vn']:
-            nodes_ill.append(t)
+    # Connect with state labels preserved
+    C = Fst(config.symtable)
+    qf = C.add_state('0')
+    q = C.add_state('1')
+    q0 = C.add_state('2')
+    C.set_start(q0)
+    C.set_final(qf)
+    #C.add_arc(src=q0, ilabel='a', dest=q)
+    C.add_arc(src=q0, ilabel='a', dest=qf)
+    C.add_arc(src=q, ilabel='b', dest=qf)
+    print(C._state2label)
+    C_trim = C.connect()
+    print(C_trim._state2label)
+    C_trim.draw('C_trim.dot')
 
-for t in nodes_ill:
-    M_right.T.remove(t)
-L = fst_util.connect(M_right)
+    # Composition
+    config.init(sigma_syms=['a', 'b'])
+    M1 = Fst(config.symtable)  # a*b*
+    for q in [0, 1]:
+        M1.add_state(q)
+    M1.set_start(0)
+    M1.set_final(1)
+    M1.add_arc(src=0, ilabel='a', dest=0)
+    M1.add_arc(src=0, ilabel='b', dest=1)
+    M1.add_arc(src=1, ilabel='b', dest=1)
 
-outputs = fst_util.accepted_strings(L, 4)
-print('legal words of length <= 4 with <-RL nasal spreading:\n',
-        outputs)
+    M2 = Fst(config.symtable)  # ab*
+    for q in [0, 1]:
+        M2.add_state(q)
+    M2.set_start(0)
+    M2.set_final(1)
+    M2.add_arc(src=0, ilabel='a', dest=1)
+    M2.add_arc(src=1, ilabel='b', dest=1)
+    M = compose(M1, M2)
+    M.draw('M.dot')
+
+    # Arc deletion
+    config.init(sigma_syms=['a', 'b'])
+    fst = Fst(config.symtable)
+    for q in [0, 1]:
+        fst.add_state(q)
+    fst.set_start(0)
+    fst.set_final(1)
+    fst.add_arc(src=0, ilabel='a', dest=1)
+    fst.add_arc(src=0, ilabel='b', dest=1)
+    print(fst.print())
+
+
+if __name__ == '__main__':
+    test()
