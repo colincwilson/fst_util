@@ -227,6 +227,9 @@ class Fst(pynini.Fst):
 
 
 def arc_equal(arc1, arc2):
+    """
+    Arc equality (missing from pynini?)
+    """
     val = (arc1.ilabel == arc2.ilabel) and \
         (arc1.olabel == arc2.olabel) and \
             (arc1.weight == arc2.weight) and \
@@ -448,29 +451,3 @@ def _suffix(x, l):
     if len(x) < l:
         return x
     return x[-l:]
-
-
-# # # # # Deprecated # # # # #
-
-# class Arc(pynini.Arc):
-#     """
-#     Pynini Arc with source state and equality
-#     xxx nonfunctional
-#     """
-
-#     def __init__(self, src, ilabel, olabel, weight, dest):
-#         super(Arc, self).__init__(ilabel, olabel, weight, dest)
-#         self.src = src
-
-#     def __eq__(self, other):
-#         if other == self:
-#             return True
-#         if not isinstance(other, Arc):
-#             return False
-#         if self.src != other.src or self.ilabel != other.ilabel \
-#             or self.olabel != other.olabel or self.weight != other.weight \
-#                 or self.nextstate != other.nextstate:
-#             return False
-
-#     def __neq__(self, other):
-#         return not (self == other)
