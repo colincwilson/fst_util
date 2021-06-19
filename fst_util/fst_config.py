@@ -5,14 +5,31 @@ from pynini import SymbolTable
 epsilon = 'ϵ'  # <eps>
 bos = '⋊'  # '>' | <s>
 eos = '⋉'  # '<' | </s>
-syms = None  # All symbols in symtable
-sigma = None  # Ordinary symbols
+syms = []  # All symbols in symtable
+sigma = []  # Ordinary symbols
 symtable = None
 
 
-def init(sigma_syms, special_syms=[]):
+def init(config):
+    """ Set globals with dictionary or module """
+    global epsilon, bos, eos
     global syms, sigma, symtable
-    sigma = sigma_syms[:]
+    if not isinstance(config, dict):
+        config = vars(config)
+    if 'epsilon' in config:
+        epsilon = config['epsilon']
+    if 'bos' in config:
+        bos = config['bos']
+    if 'eos' in config:
+        eos = config['eos']
+    if 'sigma' in config:
+        sigma = config['sigma']
+    else:
+        sigma = []
+    if 'special_syms' in config:
+        special_syms = config['special_syms']
+    else:
+        special_syms = []
     symtable = SymbolTable()
     symtable.add_symbol(epsilon)
     symtable.add_symbol(bos)

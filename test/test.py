@@ -8,7 +8,8 @@ from fst_util.fst import *
 
 def test():
     # State labels
-    fst_config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
+    config = {'sigma': ['a', 'b'], 'special_syms': ['λ']}
+    fst_config.init(config)
     fst = Fst(fst_config.symtable)
     for sym in ['λ', '⋊', 'A', 'B']:
         fst.add_state(sym)
@@ -24,7 +25,8 @@ def test():
     fst.draw('tmp.dot')
 
     # Left- and right- context acceptors
-    fst_config.init(sigma_syms=['a', 'b'], special_syms=['λ'])
+    config = {'sigma': ['a', 'b'], 'special_syms': ['λ']}
+    fst_config.init(config)
     L = left_context_acceptor(context_length=2)
     L.draw('L.dot')
     R = right_context_acceptor(context_length=2)
@@ -33,7 +35,7 @@ def test():
     # Accepted strings
     print(accepted_strings(L, 'input', 4))
 
-    # Connect with state labels preserved
+    # Connect (state labels preserved)
     C = Fst(fst_config.symtable)
     qf = C.add_state('0')
     q = C.add_state('1')
@@ -49,28 +51,32 @@ def test():
     C_trim.draw('C_trim.dot')
 
     # Composition
-    fst_config.init(sigma_syms=['a', 'b'])
+    config = {'sigma': ['a', 'b']}
+    fst_config.init(config)
     M1 = Fst(fst_config.symtable)  # a*b*
     for q in [0, 1]:
         M1.add_state(q)
     M1.set_start(0)
     M1.set_final(1)
-    M1.add_arc(src=0, ilabel='a', dest=0)
-    M1.add_arc(src=0, ilabel='b', dest=1)
-    M1.add_arc(src=1, ilabel='b', dest=1)
+    for x in fst_config.sigma:
+        M1.add_arc(src=0, ilabel=x, dest=0)
+        M1.add_arc(src=0, ilabel=x, dest=1)
+        M1.add_arc(src=1, ilabel=x, dest=1)
 
     M2 = Fst(fst_config.symtable)  # ab*
     for q in [0, 1]:
         M2.add_state(q)
     M2.set_start(0)
     M2.set_final(1)
-    M2.add_arc(src=0, ilabel='a', dest=1)
-    M2.add_arc(src=1, ilabel='b', dest=1)
+    for x in fst_config.sigma:
+        M2.add_arc(src=0, ilabel=x, dest=0)
+        M2.add_arc(src=0, ilabel=x, dest=1)
     M = compose(M1, M2)
     M.draw('M.dot')
 
     # Arc deletion
-    fst_config.init(sigma_syms=['a', 'b'])
+    config = {'sigma': ['a', 'b']}
+    fst_config.init(config)
     fst = Fst(fst_config.symtable)
     for q in [0, 1]:
         fst.add_state(q)

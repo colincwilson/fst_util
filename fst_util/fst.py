@@ -445,7 +445,7 @@ def _prefix(x, l):
 
 
 def _suffix(x, l):
-    """ Length-l suffix of string/tuple x """
+    """ Length-l suffix of tuple x """
     if l < 1:
         return ()
     if len(x) < l:
