@@ -14,8 +14,9 @@ def init(config):
     """ Set globals with dictionary or module """
     global epsilon, bos, eos
     global syms, sigma, symtable
-    if not isinstance(config, dict):
-        config = vars(config)
+    #if not isinstance(config, dict):
+    #    print(config)
+    #    config = vars(config)
     if 'epsilon' in config:
         epsilon = config['epsilon']
     if 'bos' in config:
