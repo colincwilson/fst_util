@@ -7,18 +7,22 @@ from . import fst_config  # xxx
 
 class Fst(pynini.Fst):
     """
-    Pynini Fst with labeled inputs/outputs/states
+    Pynini Fst with labeled inputs/outputs/states and optional state output function
     - Input/output labels must be strings
     - State labels must be hashable (strings, tuples, etc.)
     todo: deepcopy; destructive operations
     """
 
-    def __init__(self, symtable):
+    def __init__(self, input_symtable, output_symtable=None):
         super(Fst, self).__init__()
-        super(Fst, self).set_input_symbols(symtable)
-        super(Fst, self).set_output_symbols(symtable)
+        super(Fst, self).set_input_symbols(input_symtable)
+        if output_symtable is not None:
+            super(Fst, self).set_output_symbols(output_symtable)
+        else:
+            super(Fst, self).set_output_symbols(input_symtable)
         self._state2label = {}  # State id -> label
         self._label2state = {}  # Label -> state id
+        self.sigma = {} # State output function
 
     def add_state(self, state_label=None):
         """ Add new state, optionally specifying its label """
@@ -37,17 +41,23 @@ class Fst(pynini.Fst):
         return state
 
     def add_arc(self, src, ilabel, olabel=None, weight=None, dest=None):
-        """ Add arc (accepts int or string attributes) """
+        """ Add arc (given int or string attributes) """
         if not isinstance(src, int):
             src = self._label2state[src]
-        if not isinstance(dest, int):
-            dest = self._label2state[dest]
         if not isinstance(ilabel, int):
-            ilabel = self.input_symbols().find(ilabel)
+            ilabel_str = ilabel
+            ilabel = self.mutable_input_symbols().find(ilabel_str)
+            if ilabel == pynini.NO_LABEL:
+                ilabel = self.mutable_input_symbols().add_symbol(ilabel_str)
         if olabel is None:
             olabel = ilabel
         elif not isinstance(olabel, int):
-            olabel = self.output_symbols().find(olabel)
+            olabel_str = olabel
+            olabel = self.mutable_output_symbols().find(olabel_str)
+            if olabel == pynini.NO_LABEL:
+                olabel = self.mutable_output_symbols().add_symbol(olabel_str)
+        if not isinstance(dest, int):
+            dest = self._label2state[dest]
         if weight is None:
             weight = 0
         #print(src, ilabel, olabel, weight, dest)
@@ -62,7 +72,14 @@ class Fst(pynini.Fst):
     def set_final(self, state, weight=None):
         if not isinstance(state, int):
             state = self._label2state[state]
+        if weight is None:
+            weight = pynini.Weight.one(self.weight_type())
         return super(Fst, self).set_final(state, weight)
+
+    def finals(self):
+        Zero = pynini.Weight.zero(self.weight_type()) # or self.arc_type?
+        F = set([q for q in self.states() if self.final(q) != Zero])
+        return F
 
     def input_label(self, sym_id):
         return self.input_symbols().find(sym_id)
@@ -72,7 +89,7 @@ class Fst(pynini.Fst):
 
     def state_label(self, state):
         return self._state2label[state]
-
+    
     def arcs(self, src):
         if not isinstance(src, int):
             src = self._label2state[src]
@@ -83,15 +100,38 @@ class Fst(pynini.Fst):
             src = self._label2state[src]
         return super(Fst, self).mutable_arcs(src)
 
-    def connect(self):
+    def copy(self):
+        """ Deep copy """
+        _fst = self.trim()
+        fst = Fst(_fst.input_symbols(), _fst.output_symbols())
+        for q in _fst.states():
+            fst.add_state(_fst._state2label[q])
+        fst.set_start(_fst.start())
+        for q in _fst.finals():
+            fst.set_final(q)
+        for q in _fst.states():
+            for t in _fst.arcs(q):
+                fst.add_arc(q, t.ilabel, t.olabel, t.weight.copy(), t.nextstate)
+        fst._state2label = _state2label = {}
+        fst._label2state = _label2state = {}
+        for q, l in _fst._state2label.items():
+            _state2label[q] = l
+            _label2state[l] = q
+        fst.sigma = sigma = {}
+        for q, l in _fst.sigma:
+            sigma[q] = l
+        return fst
+
+    def trim(self):
         """
         Remove states and arcs not on successful paths [nondestructive]
+        aka connect()
         """
         accessible = self.accessible(forward=True)
         coaccessible = self.accessible(forward=False)
         live_states = accessible & coaccessible
         dead_states = filter(lambda q: q not in live_states, self.states())
-        fst = self._delete_states(dead_states)
+        fst = self.delete_states(dead_states, trim=False)
         return fst
 
     def accessible(self, forward=True):
@@ -109,8 +149,7 @@ class Fst(pynini.Fst):
                     T[src].add(dest)
         else:
             # Final states and backward transitions
-            Zero = pynini.Weight.zero(self.weight_type())
-            Q = set([q for q in self.states() if self.final(q) != Zero])
+            Q = self.finals()
             T = {}
             for src in self.states():
                 for t in self.arcs(src):
@@ -131,16 +170,9 @@ class Fst(pynini.Fst):
                     Q_new.add(dest)
         return Q
 
-    def delete_states(self, dead_states):
+    def delete_states(self, dead_states, trim=True):
         """
-        Remove states while preserving labels, trim result [nondestructive]
-        """
-        fst = self._delete_states(dead_states)
-        return fst.connect()
-
-    def _delete_states(self, dead_states):
-        """
-        Remove states while preserving labels [nondestructive]
+        Remove states while preserving labels, optionally trim result [nondestructive]
         """
         fst = Fst(self.input_symbols())
         # Reindex live states, copying labels
@@ -160,6 +192,8 @@ class Fst(pynini.Fst):
                             self.arcs(q)):
                 dest = state_map[t.nextstate]
                 fst.add_arc(src, t.ilabel, t.olabel, t.weight, dest)
+        if trim:
+            fst = fst.trim()
         return fst
 
     def delete_arcs(self, dead_arcs):
@@ -243,7 +277,7 @@ def compose(fst1, fst2):
     todo: matcher options
     """
     fst = Fst(fst_config.symtable)
-    One = pynini.Weight.one(fst.weight_type())
+    Zero = pynini.Weight.zero(fst.weight_type())
     # xxx arcsort(), mutable_arcs(), final(), start(), states()
 
     q0_1 = fst1.start()
@@ -270,13 +304,13 @@ def compose(fst1, fst2):
                     fst.add_state(dest)  # No change if state already exists
                     fst.add_arc(
                         src=src, ilabel=t1.ilabel, olabel=t2.olabel, dest=dest)
-                    if fst1.final(dest1) == fst2.final(dest2) == One:  # xxx
-                        fst.set_final(dest)
+                    if fst1.final(dest1) != Zero and fst2.final(dest2) != Zero:
+                        fst.set_final(dest) # final if both dest1 and dest2 are
                     if dest not in Q:
                         Q.add(dest)
                         Q_new.add(dest)
 
-    return fst.connect()
+    return fst.trim()
 
 
 def accepted_strings(fst, side='output', max_len=10):
@@ -314,7 +348,7 @@ def accepted_strings(fst, side='output', max_len=10):
 
 def left_context_acceptor(context_length=1, sigma_tier=None):
     """
-    Acceptor (identity transducer) for segments in immediately precedin contexts (histories) of specified length. If Sigma_tier is specified as  a subset of Sigma, only contexts over Sigma_tier are tracked (other member of Sigma are skipped, i.e., label self-loops on each interior state)
+    Acceptor (identity transducer) for segments in immediately preceding  contexts (histories) of specified length. If Sigma_tier is specified as a subset of Sigma, only contexts over Sigma_tier are tracked (other member of Sigma are skipped, i.e., label self-loops on each interior state)
     """
     epsilon = fst_config.epsilon
     bos = fst_config.bos
@@ -370,7 +404,7 @@ def left_context_acceptor(context_length=1, sigma_tier=None):
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.connect() # xxx handle state relabeling
+    #fst = fst.trim() # xxx handle state relabeling
     return fst
 
 
@@ -431,7 +465,7 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.connect() # xxx handle state relabeling
+    #fst = fst.trim() # xxx handle state relabeling
     return fst
 
 
