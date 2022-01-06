@@ -2,6 +2,8 @@
 
 from pynini import SymbolTable
 
+λ = ''  # empty string (de la Higuera, p. 48)
+unk = '⊥'  # unknown / empty set (de la Higuera, p. 376)
 epsilon = 'ϵ'  # <eps>
 bos = '⋊'  # '>' | <s>
 eos = '⋉'  # '<' | </s>
