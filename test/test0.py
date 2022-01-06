@@ -8,7 +8,7 @@ from fst_util.fst import *
 
 def test():
     # State labels
-    config = {'sigma': ['a', 'b'], 'special_syms': ['λ']}
+    config = {'sigma': [], 'special_syms': ['λ']}
     fst_config.init(config)
     fst = Fst(fst_config.symtable)
     for sym in ['λ', '⋊', 'A', 'B']:
@@ -21,8 +21,11 @@ def test():
     fst.add_arc(src='⋊', ilabel='b', dest='B')
     fst.add_arc(src='A', ilabel='a', olabel='a', dest='A')
     fst.add_arc(src='A', ilabel='a', olabel='b', dest='B')
-    #print(fst.print(acceptor=True, show_weight_one=True))
+    print(fst.print(acceptor=True, show_weight_one=True))
     fst.draw('tmp.dot')
+
+    fst2 = fst.copy()
+    print(fst2.print(acceptor=True, show_weight_one=True))
 
     # Left- and right- context acceptors
     config = {'sigma': ['a', 'b'], 'special_syms': ['λ']}

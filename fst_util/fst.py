@@ -7,7 +7,7 @@ from . import fst_config  # xxx
 
 class Fst(pynini.Fst):
     """
-    Pynini Fst with labeled inputs/outputs/states
+    Pynini Fst with labeled inputs/outputs/states and optional state output function
     - Input/output labels must be strings
     - State labels must be hashable (strings, tuples, etc.)
     todo: destructive operations; state output functions?
@@ -21,6 +21,7 @@ class Fst(pynini.Fst):
         super(Fst, self).set_output_symbols(output_symtable)
         self._state2label = {}  # State id -> label
         self._label2state = {}  # Label -> state id
+        self.sigma = {}  # State output function
 
     def add_state(self, state_label=None):
         """ Add new state, optionally specifying its label """
@@ -148,6 +149,7 @@ class Fst(pynini.Fst):
     def connect(self):
         """
         Remove states and arcs not on successful paths [nondestructive]
+        aka connect()
         """
         accessible = self.accessible(forward=True)
         print(f'accessible: {accessible}')
@@ -312,7 +314,7 @@ def compose(fst1, fst2):
     todo: matcher options; flatten lists
     """
     fst = Fst(fst_config.symtable)
-    One = pynini.Weight.one(fst.weight_type())
+    Zero = pynini.Weight.zero(fst.weight_type())
     # xxx arcsort(), mutable_arcs(), final(), start(), states()
 
     q0_1 = fst1.start()
@@ -339,13 +341,13 @@ def compose(fst1, fst2):
                     fst.add_state(dest)  # No change if state already exists
                     fst.add_arc(
                         src=src, ilabel=t1.ilabel, olabel=t2.olabel, dest=dest)
-                    if fst1.final(dest1) == fst2.final(dest2) == One:  # xxx
-                        fst.set_final(dest)
+                    if fst1.final(dest1) != Zero and fst2.final(dest2) != Zero:
+                        fst.set_final(dest)  # final if both dest1 and dest2 are
                     if dest not in Q:
                         Q.add(dest)
                         Q_new.add(dest)
 
-    return fst.connect()
+    return fst.trim()
 
 
 def accepted_strings(fst, side='output', max_len=10):
@@ -439,7 +441,7 @@ def left_context_acceptor(context_length=1, sigma_tier=None):
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.connect() # xxx handle state relabeling
+    #fst = fst.trim() # xxx handle state relabeling
     return fst
 
 
@@ -500,7 +502,7 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.connect() # xxx handle state relabeling
+    #fst = fst.trim() # xxx handle state relabeling
     return fst
 
 

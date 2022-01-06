@@ -6,30 +6,30 @@ orientation = Portrait;
 ranksep = "0.4";
 nodesep = "0.25";
 0 [label = "?", shape = circle, style = bold, fontsize = 14]
-	0 -> 3 [label = "a:?", fontsize = 14];
-	0 -> 7 [label = "b:?", fontsize = 14];
-1 [label = "a b a b", shape = circle, style = solid, fontsize = 14]
-	1 -> 12 [label = "⋉:0 1 0 1", fontsize = 14];
-2 [label = "b ⋉", shape = doublecircle, style = solid, fontsize = 14]
-3 [label = "a", shape = circle, style = solid, fontsize = 14]
-	3 -> 4 [label = "b:?", fontsize = 14];
-	3 -> 8 [label = "a:?", fontsize = 14];
-	3 -> 9 [label = "⋉:1", fontsize = 14];
+	0 -> 1 [label = "a:?", fontsize = 14];
+	0 -> 2 [label = "b:?", fontsize = 14];
+1 [label = "a", shape = circle, style = solid, fontsize = 14]
+	1 -> 3 [label = "a:?", fontsize = 14];
+	1 -> 4 [label = "b:?", fontsize = 14];
+	1 -> 8 [label = "⋉:1", fontsize = 14];
+2 [label = "b", shape = circle, style = solid, fontsize = 14]
+	2 -> 9 [label = "⋉:1", fontsize = 14];
+3 [label = "a a", shape = circle, style = solid, fontsize = 14]
+	3 -> 5 [label = "a:?", fontsize = 14];
+	3 -> 10 [label = "⋉:0 1", fontsize = 14];
 4 [label = "a b", shape = circle, style = solid, fontsize = 14]
 	4 -> 6 [label = "a:?", fontsize = 14];
-	4 -> 10 [label = "⋉:0 1", fontsize = 14];
-5 [label = "a a ⋉", shape = doublecircle, style = solid, fontsize = 14]
+	4 -> 11 [label = "⋉:0 1", fontsize = 14];
+5 [label = "a a a", shape = circle, style = solid, fontsize = 14]
+	5 -> 12 [label = "⋉:0 0 1", fontsize = 14];
 6 [label = "a b a", shape = circle, style = solid, fontsize = 14]
-	6 -> 1 [label = "b:?", fontsize = 14];
-7 [label = "b", shape = circle, style = solid, fontsize = 14]
-	7 -> 2 [label = "⋉:1", fontsize = 14];
-8 [label = "a a", shape = circle, style = solid, fontsize = 14]
-	8 -> 5 [label = "⋉:0 1", fontsize = 14];
-	8 -> 11 [label = "a:?", fontsize = 14];
-9 [label = "a ⋉", shape = doublecircle, style = solid, fontsize = 14]
-10 [label = "a b ⋉", shape = doublecircle, style = solid, fontsize = 14]
-11 [label = "a a a", shape = circle, style = solid, fontsize = 14]
-	11 -> 13 [label = "⋉:0 0 1", fontsize = 14];
-12 [label = "a b a b ⋉", shape = doublecircle, style = solid, fontsize = 14]
-13 [label = "a a a ⋉", shape = doublecircle, style = solid, fontsize = 14]
+	6 -> 7 [label = "b:?", fontsize = 14];
+7 [label = "a b a b", shape = circle, style = solid, fontsize = 14]
+	7 -> 13 [label = "⋉:0 1 0 1", fontsize = 14];
+8 [label = "a ⋉", shape = doublecircle, style = solid, fontsize = 14]
+9 [label = "b ⋉", shape = doublecircle, style = solid, fontsize = 14]
+10 [label = "a a ⋉", shape = doublecircle, style = solid, fontsize = 14]
+11 [label = "a b ⋉", shape = doublecircle, style = solid, fontsize = 14]
+12 [label = "a a a ⋉", shape = doublecircle, style = solid, fontsize = 14]
+13 [label = "a b a b ⋉", shape = doublecircle, style = solid, fontsize = 14]
 }
