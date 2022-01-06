@@ -2,7 +2,7 @@
 
 import sys
 import pynini
-from . import fst_config  # xxx
+from . import config  # xxx
 
 
 class Fst(pynini.Fst):
@@ -111,6 +111,40 @@ class Fst(pynini.Fst):
             src = self.state_index(src)
         return super(Fst, self).mutable_arcs(src)
 
+    def transduce(self, x):
+        """
+        Transduce space-separated input x
+        """
+        isymbols = self.input_symbols()
+        osymbols = self.output_symbols()
+        try:
+            fst_in = pynini.accep(x, token_type=isymbols)
+        except:
+            return []
+        fst_out = fst_in @ self
+        strpath_iter = fst_out.paths(
+            input_token_type=isymbols, output_token_type=osymbols)
+        Y = [y for y in strpath_iter.ostrings()]
+        return Y
+
+    def istrings(self):
+        """
+        Input strings of paths through this machine, assumed acyclic
+        """
+        isymbols = self.input_symbols()
+        strpath_iter = fst.paths(input_token_type=isymbols)
+        X = [x for x in strpath_iter.istrings()]
+        return X
+
+    def ostrings(self):
+        """
+        Output strings of paths through this machine, assumed acyclic
+        """
+        osymbols = self.output_symbols()
+        strpath_iter = fst.paths(output_token_type=osymbols)
+        Y = [y for y in strpath_iter.ostrings()]
+        return Y
+
     def copy(self):
         """ Deep copy """
         #_fst = self.connect()
@@ -152,11 +186,11 @@ class Fst(pynini.Fst):
         aka connect()
         """
         accessible = self.accessible(forward=True)
-        print(f'accessible: {accessible}')
+        #print(f'accessible: {accessible}')
         coaccessible = self.accessible(forward=False)
-        print(f'coaccessible: {coaccessible}')
+        #print(f'coaccessible: {coaccessible}')
         live_states = accessible & coaccessible
-        print(f'live states: {live_states}')
+        #print(f'live states: {live_states}')
         dead_states = filter(lambda q: q not in live_states, self.states())
         dead_states = list(dead_states)
         fst = self.delete_states(dead_states, connect=False)

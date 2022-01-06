@@ -2,14 +2,16 @@
 
 from pynini import SymbolTable
 
-λ = ''  # empty string (de la Higuera, p. 48)
-unk = '⊥'  # unknown / empty set (de la Higuera, p. 376)
 epsilon = 'ϵ'  # <eps>
 bos = '⋊'  # '>' | <s>
 eos = '⋉'  # '<' | </s>
+λ = ''  # empty string (de la Higuera, p. 48)
+unk = '⊥'  # unknown / empty set (de la Higuera, p. 376)
 syms = []  # All symbols in symtable
 sigma = []  # Ordinary symbols
 symtable = None
+
+verbosity = 0
 
 
 def init(config):

@@ -4,7 +4,9 @@ import sys
 from copy import copy
 from pynini import SymbolTable
 
-from . import fst_config  # xxx
+from . import config
+#from .fst_config import *
+#from . import fst_config  # xxx
 from .fst import Fst
 
 
@@ -59,7 +61,11 @@ class SimpleFst():
         """
         Convert to state-labeled pynini FST
         """
-        fst = Fst(SymbolTable(), SymbolTable())
+        input_symbols = SymbolTable()
+        output_symbols = SymbolTable()
+        input_symbols.add_symbol(config.epsilon)
+        output_symbols.add_symbol(config.epsilon)
+        fst = Fst(input_symbols, output_symbols)
         for q in self.Q:
             fst.add_state(q)
         fst.set_start(self.q0)
