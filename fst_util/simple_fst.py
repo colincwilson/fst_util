@@ -6,14 +6,13 @@ from functools import total_ordering
 from pynini import SymbolTable
 
 from . import config
-#from .fst_config import *
-#from . import fst_config  # xxx
 from .fst import Fst
 
 
 class SimpleFst():
     """
     Bare-bones unweighted FST implementation.
+    todo: replace transition list with map src -> transitions
     """
 
     def __init__(self, Q=None, q0=None, F=None, T=None):

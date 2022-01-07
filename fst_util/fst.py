@@ -7,10 +7,10 @@ from . import config  # xxx
 
 class Fst(pynini.Fst):
     """
-    Pynini Fst with labeled inputs/outputs/states and optional state output function
+    Pynini Fst with labeled inputs/outputs/states.
     - Input/output labels must be strings
     - State labels must be hashable (strings, tuples, etc.)
-    todo: destructive operations; state output functions?
+    todo: destructive operations
     """
 
     def __init__(self, input_symtable, output_symtable=None):
@@ -183,14 +183,10 @@ class Fst(pynini.Fst):
     def connect(self):
         """
         Remove states and arcs not on successful paths [nondestructive]
-        aka connect()
         """
         accessible = self.accessible(forward=True)
-        #print(f'accessible: {accessible}')
         coaccessible = self.accessible(forward=False)
-        #print(f'coaccessible: {coaccessible}')
         live_states = accessible & coaccessible
-        #print(f'live states: {live_states}')
         dead_states = filter(lambda q: q not in live_states, self.states())
         dead_states = list(dead_states)
         fst = self.delete_states(dead_states, connect=False)
@@ -211,7 +207,6 @@ class Fst(pynini.Fst):
                     T[src].add(dest)
         else:
             # Final states and backward transitions
-            #Zero = pynini.Weight.zero(self.weight_type())
             Q = set([q for q in self.states() if self.is_final(q)])
             T = {}
             for src in self.states():
@@ -251,7 +246,6 @@ class Fst(pynini.Fst):
             if q == q0:
                 fst.set_start(q_new)
             fst.set_final(q_new, self.final(q))
-        #print(state_map)
 
         # Copy transitions between live states
         for q in filter(lambda q: q not in dead_states, self.states()):
