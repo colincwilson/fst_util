@@ -2,7 +2,7 @@
 
 import sys
 import pynini
-from . import config  # xxx
+from . import config
 
 
 class Fst(pynini.Fst):
@@ -341,7 +341,7 @@ def compose(fst1, fst2):
     FST composition, retaining contextual info from original machines by labeling each state q = (q1, q2) with (label(q1), label(q2))
     todo: matcher options; flatten lists
     """
-    fst = Fst(fst_config.symtable)
+    fst = Fst(config.symtable)
     Zero = pynini.Weight.zero(fst.weight_type())
     # xxx arcsort(), mutable_arcs(), final(), start(), states()
 
@@ -375,7 +375,7 @@ def compose(fst1, fst2):
                         Q.add(dest)
                         Q_new.add(dest)
 
-    return fst.trim()
+    return fst.connect()
 
 
 def accepted_strings(fst, side='output', max_len=10):
@@ -415,15 +415,15 @@ def left_context_acceptor(context_length=1, sigma_tier=None):
     """
     Acceptor (identity transducer) for segments in immediately preceding contexts (histories) of specified length. If Sigma_tier is specified as  a subset of Sigma, only contexts over Sigma_tier are tracked (other member of Sigma are skipped, i.e., label self-loops on each interior state)
     """
-    epsilon = fst_config.epsilon
-    bos = fst_config.bos
-    eos = fst_config.eos
+    epsilon = config.epsilon
+    bos = config.bos
+    eos = config.eos
     if sigma_tier is None:
-        sigma_tier = set(fst_config.sigma)
+        sigma_tier = set(config.sigma)
         sigma_skip = set()
     else:
-        sigma_skip = set(fst_config.sigma) - sigma_tier
-    fst = Fst(fst_config.symtable)
+        sigma_skip = set(config.sigma) - sigma_tier
+    fst = Fst(config.symtable)
 
     # Initial and peninitial states
     q0 = ('λ',)
@@ -469,7 +469,7 @@ def left_context_acceptor(context_length=1, sigma_tier=None):
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.trim() # xxx handle state relabeling
+    #fst = fst.connect() # xxx handle state relabeling
     return fst
 
 
@@ -477,15 +477,15 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
     """
     Acceptor (identity transducer) for segments in immediately following contexts (futures) of specified length. If Sigma_tier is specified as a subset of Sigma, only contexts over Sigma_tier are tracked (other members of Sigma are skipped, i.e., label self-loops on each interior state)
     """
-    epsilon = fst_config.epsilon
-    bos = fst_config.bos
-    eos = fst_config.eos
+    epsilon = config.epsilon
+    bos = config.bos
+    eos = config.eos
     if sigma_tier is None:
-        sigma_tier = set(fst_config.sigma)
+        sigma_tier = set(config.sigma)
         sigma_skip = set()
     else:
-        sigma_skip = set(fst_config.sigma) - sigma_tier
-    fst = Fst(fst_config.symtable)
+        sigma_skip = set(config.sigma) - sigma_tier
+    fst = Fst(config.symtable)
 
     # Final and penultimate state
     qf = ('λ',)
@@ -530,7 +530,7 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.trim() # xxx handle state relabeling
+    #fst = fst.connect() # xxx handle state relabeling
     return fst
 
 
