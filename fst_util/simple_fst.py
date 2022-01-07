@@ -2,6 +2,7 @@
 
 import sys
 from copy import copy
+from functools import total_ordering
 from pynini import SymbolTable
 
 from . import config
@@ -76,6 +77,7 @@ class SimpleFst():
         return fst
 
 
+@total_ordering
 class Transition():
     """
     Transition of SimpleFST
@@ -93,17 +95,13 @@ class Transition():
         return Transition(copy(q), copy(a), copy(w), copy(r))
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and (self.src == other.src) \
-                and (self.ilabel == other.ilabel) \
-                    and (self.olabel == other.olabel) \
-                        and (self.dest == other.dest)
+        if not isinstance(other, type(self)): return NotImplemented
+        return (self.src == other.src) and (self.ilabel == other.ilabel) and (self.olabel == other.olabel) and (self.dest == other.dest)
 
-    #def __lt__(self, other):
-    #    if not isinstance(other, self.__class__):
-    #       raise Error('Incorrect type for Transition lt')
-    #   return (self.src, self.ilabel, self.olabel, self.dest) < \
-    #                (other.src, other.ilabel, other.olabel, other.dest)
+    def __lt__(self, other):
+        if not isinstance(other, self.__class__):
+            raise Error('Incorrect type for Transition lt')
+        return (self.src, self.ilabel, self.olabel, self.dest) < (other.src, other.ilabel, other.olabel, other.dest)
 
     def __hash__(self):
         return hash((self.src, self.ilabel, self.olabel, self.dest))
