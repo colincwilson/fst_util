@@ -11,50 +11,95 @@ from .fst import Fst
 
 class SimpleFst():
     """
-    Bare-bones unweighted FST implementation.
-    todo: replace transition list with map src -> transitions
+    Bare-bones unweighted FST implementation
     """
 
     def __init__(self, Q=None, q0=None, F=None, T=None):
         self.Q = set(Q) if Q is not None else set()  # States
         self.q0 = q0 if q0 is not None else -1  # Initial state
         self.F = set(F) if F is not None else set()  # Final states
-        self.T = set(T) if T is not None else set()  # Transitions
+        self.T = {}  # map state -> outgoing arcs
+        # (outgoing arc collection is Set [default] or List)
 
-    # Operate on attributes directly
-    # Add state
-    # fst.Q.add(q)
+    def add_state(self, q):
+        """
+        Add to set of states
+        """
+        self.Q.add(q)
 
-    # Set initial state
-    # fst.q0 = q
+    def set_start(self, q):
+        """
+        Set unique start state to q
+        (add q to state set if not already present)
+        """
+        if q not in self.Q:
+            self.Q.add(q)
+        self.q0 = q
 
-    # Add transition
-    #fst.T.add(t)
+    def set_final(self, q):
+        """
+        Add q to set of final states
+        (add q to state set if not already present)
+        """
+        if q not in self.Q:
+            self.Q.add(q)
+        self.F.add(q)
+
+    def add_arc(self, t):
+        """
+        Add arc (and src/dest to state set if not already present)
+        """
+        if t.src not in self.Q:
+            self.Q.add(t.src)
+        if t.dest not in self.Q:
+            self.Q.add(t.dest)
+        if t.src not in self.T:
+            self.T[t.src] = set()
+        if isinstance(self.T[t.src], set):
+            self.T[t.src].add(t)
+        else:
+            self.T[t.src].append(t)
 
     def delete_states(self, dead_states):
+        """
+        Delete states and their outgoing/incoming arcs
+        """
         # [nondestructive]
-        fst = SimpleFst(
-            Q=self.Q.difference(dead_states),
-            q0=self.q0 if self.q0 not in dead_states else -1,
-            F=self.F.difference(dead_states),
-            T={
-                t for t in self.T
-                if t.src not in dead_states and t.dest not in dead_states
-            })
+        Q = self.Q.difference(dead_states)
+        q0 = self.q0 if self.q0 not in dead_states else -1
+        F = self.F.difference(dead_states)
+        for q in dead_states:
+            del T[q]
+        dead_arcs = []
+        for q in T:
+            dead_arcs += [t for t in T[q] if t.dest in dead_states]
+        for t in dead_arcs:
+            T[q].remove(t)
+        fst = SimpleFst(Q, q0, F, T)
         return fst
 
     def copy(self):
+        """
+        Deep copy of this machine
+        """
         Q = {q for q in self.Q}
         q0 = self.q0
         F = {q for q in self.F}
-        T = {copy(t) for t in self.T}
+        T = deepcopy(self.T)
+        #T = {copy(t) for t in self.T}
         return SimpleFst(Q, q0, F, T)
 
     def print(self):
+        """
+        String representations of Q, q0, F, T
+        """
         val = f'Q {self.Q}\n'
         val += f'q0 {self.q0}\n'
         val += f'F {self.F}\n'
-        val += f'T {[str(t) for t in self.T]}\n'
+        _T = []
+        for q in self.T:
+            _T += list(self.T[q])
+        val += f'T {[str(t) for t in _T]}\n'
         return val
 
     def pynini(self):
@@ -71,15 +116,16 @@ class SimpleFst():
         fst.set_start(self.q0)
         for q in self.F:
             fst.set_final(q)
-        for t in self.T:
-            fst.add_arc(t.src, t.ilabel, t.olabel, None, t.dest)
+        for q in self.T:
+            for t in self.T[q]:
+                fst.add_arc(t.src, t.ilabel, t.olabel, None, t.dest)
         return fst
 
 
 @total_ordering
-class Transition():
+class SimpleArc():
     """
-    Transition of SimpleFST
+    Arc of SimpleFST
     """
 
     def __init__(self, src, ilabel, olabel, dest):
@@ -91,16 +137,19 @@ class Transition():
     def __copy__(self):
         q, a, w, r = \
             self.src, self.ilabel, self.olabel, self.dest
-        return Transition(copy(q), copy(a), copy(w), copy(r))
+        return SimpleArc(copy(q), copy(a), copy(w), copy(r))
 
     def __eq__(self, other):
-        if not isinstance(other, type(self)): return NotImplemented
-        return (self.src == other.src) and (self.ilabel == other.ilabel) and (self.olabel == other.olabel) and (self.dest == other.dest)
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return (self.src == other.src) and (self.ilabel == other.ilabel) and (
+            self.olabel == other.olabel) and (self.dest == other.dest)
 
     def __lt__(self, other):
-        if not isinstance(other, self.__class__):
-            raise Error('Incorrect type for Transition lt')
-        return (self.src, self.ilabel, self.olabel, self.dest) < (other.src, other.ilabel, other.olabel, other.dest)
+        if not isinstance(other, type(self)):
+            raise Error('Incorrect type for SimpleArc lt()')
+        return (self.src, self.ilabel, self.olabel,
+                self.dest) < (other.src, other.ilabel, other.olabel, other.dest)
 
     def __hash__(self):
         return hash((self.src, self.ilabel, self.olabel, self.dest))

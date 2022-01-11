@@ -13,11 +13,14 @@ class Fst(pynini.Fst):
     todo: destructive operations
     """
 
-    def __init__(self, input_symtable, output_symtable=None):
+    def __init__(self, input_symtable=None, output_symtable=None):
         super(Fst, self).__init__()
-        super(Fst, self).set_input_symbols(input_symtable)
+        if input_symtable is None:
+            input_symtable = pynini.SymbolTable()
+            input_symtable.add_symbol(config.epsilon)
         if output_symtable is None:
             output_symtable = input_symtable
+        super(Fst, self).set_input_symbols(input_symtable)
         super(Fst, self).set_output_symbols(output_symtable)
         self._state2label = {}  # State id -> label
         self._label2state = {}  # Label -> state id
@@ -262,7 +265,8 @@ class Fst(pynini.Fst):
     def delete_arcs(self, dead_arcs):
         """
         Delete arcs [destructive]
-        see: http://www.openfst.org/twiki/bin/view/Forum/FstForumArchive2014#Deleting%20a%20specific%20arc%20in%20an%20FS
+        Implemented by deleting all arcs from relevant states then adding back all non-dead arcs, as suggested in the OpenFst forum:
+        https://www.openfst.org/twiki/bin/view/Forum/FstForumArchive2014
         """
         # Group dead arcs by source state xxx do outside
         dead_arcs_ = {}
@@ -281,7 +285,7 @@ class Fst(pynini.Fst):
             for t1 in arcs:
                 live = True
                 for t2 in dead_arcs_[q]:
-                    if arc_equal(t1, t2):  # xxx
+                    if arc_equal(t1, t2):  # xxx unnecessary?
                         live = False
                         break
                 if live:
