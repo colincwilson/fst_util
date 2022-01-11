@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from copy import copy
+from copy import copy, deepcopy
 from functools import total_ordering
 from pynini import SymbolTable
 
@@ -86,8 +86,14 @@ class SimpleFst():
         Q = {q for q in self.Q}
         q0 = self.q0
         F = {q for q in self.F}
-        T = deepcopy(self.T)
-        #T = {copy(t) for t in self.T}
+        T = {}
+        for q, T_q in self.T.items():
+            T[q] = set()
+            for t in T_q:
+                t_new = SimpleArc(t.src, t.ilabel, t.olabel, t.dest)
+                #T[q].add(copy(t))
+                T[q].add(t_new)
+        #T = deepcopy(self.T)
         return SimpleFst(Q, q0, F, T)
 
     def print(self):
