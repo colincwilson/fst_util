@@ -18,7 +18,7 @@ class SimpleFst():
         self.Q = set(Q) if Q is not None else set()  # States
         self.q0 = q0 if q0 is not None else -1  # Initial state
         self.F = set(F) if F is not None else set()  # Final states
-        self.T = {}  # map state -> outgoing arcs
+        self.T = T if T is not None else {}  # map state -> outgoing arcs
         # (outgoing arc collection is Set [default] or List)
 
     def add_state(self, q):
@@ -26,6 +26,7 @@ class SimpleFst():
         Add to set of states
         """
         self.Q.add(q)
+        self.T[q] = set()
 
     def set_start(self, q):
         """
@@ -33,7 +34,7 @@ class SimpleFst():
         (add q to state set if not already present)
         """
         if q not in self.Q:
-            self.Q.add(q)
+            self.add_state(q)
         self.q0 = q
 
     def set_final(self, q):
@@ -42,7 +43,7 @@ class SimpleFst():
         (add q to state set if not already present)
         """
         if q not in self.Q:
-            self.Q.add(q)
+            self.add_state(q)
         self.F.add(q)
 
     def add_arc(self, t):
@@ -50,10 +51,10 @@ class SimpleFst():
         Add arc (and src/dest to state set if not already present)
         """
         if t.src not in self.Q:
-            self.Q.add(t.src)
+            self.add_state(t.src)
         if t.dest not in self.Q:
-            self.Q.add(t.dest)
-        if t.src not in self.T:
+            self.add_state(t.dest)
+        if t.src not in self.T:  # xxx
             self.T[t.src] = set()
         if isinstance(self.T[t.src], set):
             self.T[t.src].add(t)
