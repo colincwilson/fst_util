@@ -7,10 +7,8 @@ from . import config
 
 class Fst(pynini.Fst):
     """
-    Pynini Fst with labeled inputs/outputs/states.
-    - Input/output labels must be strings
-    - State labels must be hashable (strings, tuples, etc.)
-    todo: destructive operations
+    Pynini Fst with automatic handling of labels for inputs / outputs / states. (State labels must be hashable: strings, tuples, etc.)
+    todo: more destructive operations
     """
 
     def __init__(self, input_symtable=None, output_symtable=None):
