@@ -17,7 +17,8 @@ class Fst(pynini.Fst):
             input_symtable = pynini.SymbolTable()
             input_symtable.add_symbol(config.epsilon)
         if output_symtable is None:
-            output_symtable = input_symtable
+            output_symtable = pynini.SymbolTable()
+            output_symtable.add_symbol(config.epsilon)
         super(Fst, self).set_input_symbols(input_symtable)
         super(Fst, self).set_output_symbols(output_symtable)
         self._state2label = {}  # State id -> label
@@ -383,7 +384,7 @@ def compose(fst1, fst2):
 def accepted_strings(fst, side='output', max_len=10):
     """
     Strings accepted by fst on designated side, up to max_len (not including bos/eos); cf. pynini for paths through acyclic fst
-    todo: handle epsilons
+    todo: epsilon-handling
     """
     q0 = fst.start()
     Zero = pynini.Weight.zero(fst.weight_type())
