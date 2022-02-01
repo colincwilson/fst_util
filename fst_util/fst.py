@@ -12,15 +12,15 @@ class Fst(pynini.Fst):
     """
 
     def __init__(self, input_symtable=None, output_symtable=None):
-        super(Fst, self).__init__()
+        super().__init__()
         if input_symtable is None:
             input_symtable = pynini.SymbolTable()
             input_symtable.add_symbol(config.epsilon)
         if output_symtable is None:
             output_symtable = pynini.SymbolTable()
             output_symtable.add_symbol(config.epsilon)
-        super(Fst, self).set_input_symbols(input_symtable)
-        super(Fst, self).set_output_symbols(output_symtable)
+        super().set_input_symbols(input_symtable)
+        super().set_output_symbols(output_symtable)
         self._state2label = {}  # State id -> label
         self._label2state = {}  # Label -> state id
         self.sigma = {}  # State output function
@@ -32,7 +32,7 @@ class Fst(pynini.Fst):
             if state_label in self._label2state:
                 return self._label2state[state_label]
         # Create new state
-        state = super(Fst, self).add_state()
+        state = super().add_state()
         # Self-labeling by default
         if state_label is None:
             state_label = state
@@ -61,12 +61,12 @@ class Fst(pynini.Fst):
         if not isinstance(dest, int):
             dest = self.state_index(dest)
         arc = pynini.Arc(ilabel, olabel, weight, dest)
-        return super(Fst, self).add_arc(src, arc)
+        return super().add_arc(src, arc)
 
     def set_start(self, state):
         if not isinstance(state, int):
             state = self.state_index(state)
-        return super(Fst, self).set_start(state)
+        return super().set_start(state)
 
     def is_start(self, state):
         if not isinstance(state, int):
@@ -78,7 +78,7 @@ class Fst(pynini.Fst):
             state = self.state_index(state)
         if weight is None:
             weight = pynini.Weight.one(self.weight_type())
-        return super(Fst, self).set_final(state, weight)
+        return super().set_final(state, weight)
 
     def finals(self):
         zero = pynini.Weight.zero(self.weight_type())  # or self.arc_type?
@@ -106,12 +106,12 @@ class Fst(pynini.Fst):
     def arcs(self, src):
         if not isinstance(src, int):
             src = self.state_index(src)
-        return super(Fst, self).arcs(src)
+        return super().arcs(src)
 
     def mutable_arcs(self, src):
         if not isinstance(src, int):
             src = self.state_index(src)
-        return super(Fst, self).mutable_arcs(src)
+        return super().mutable_arcs(src)
 
     def transduce(self, x):
         """
@@ -149,7 +149,6 @@ class Fst(pynini.Fst):
 
     def copy(self):
         """ Deep copy """
-        #_fst = self.connect()
         _fst = self
 
         # Preserve input and output symbols
@@ -267,7 +266,7 @@ class Fst(pynini.Fst):
         Implemented by deleting all arcs from relevant states then adding back all non-dead arcs, as suggested in the OpenFst forum:
         https://www.openfst.org/twiki/bin/view/Forum/FstForumArchive2014
         """
-        # Group dead arcs by source state xxx do outside
+        # Group dead arcs by source state [todo: do outside]
         dead_arcs_ = {}
         for (src, t) in dead_arcs:
             if src in dead_arcs_:
@@ -279,12 +278,12 @@ class Fst(pynini.Fst):
         for q in filter(lambda q: q in dead_arcs_, self.states()):
             # Remove all arcs from state
             arcs = [t for t in self.arcs(q)]
-            super(Fst, self).delete_arcs(q)
+            super().delete_arcs(q)
             # Add back live arcs
             for t1 in arcs:
                 live = True
                 for t2 in dead_arcs_[q]:
-                    if arc_equal(t1, t2):  # xxx unnecessary?
+                    if arc_equal(t1, t2):
                         live = False
                         break
                 if live:
@@ -294,12 +293,11 @@ class Fst(pynini.Fst):
 
     def num_arcs(self):
         """
-        Total count of arcs from all states
-        xxx not in pynini?
+        Total count of arcs from all states (todo: check in pynini)
         """
         val = 0
         for state in self.states():
-            val += super(Fst, self).num_arcs(state)
+            val += super().num_arcs(state)
         return val
 
     def print(self, **kwargs):
@@ -307,7 +305,7 @@ class Fst(pynini.Fst):
         ssymbols = pynini.SymbolTable()
         for q, label in self._state2label.items():
             ssymbols.add_symbol(str(label), q)
-        return super(Fst, self).print(
+        return super().print(
             isymbols=self.input_symbols(),
             osymbols=self.output_symbols(),
             ssymbols=ssymbols,
@@ -318,7 +316,7 @@ class Fst(pynini.Fst):
         ssymbols = pynini.SymbolTable()
         for q, label in self._state2label.items():
             ssymbols.add_symbol(str(label), q)
-        return super(Fst, self).draw(
+        return super().draw(
             source,
             isymbols=self.input_symbols(),
             osymbols=self.output_symbols(),
@@ -346,7 +344,6 @@ def compose(fst1, fst2):
     """
     fst = Fst(config.symtable)
     Zero = pynini.Weight.zero(fst.weight_type())
-    # xxx arcsort(), mutable_arcs(), final(), start(), states()
 
     q0_1 = fst1.start()
     q0_2 = fst2.start()
@@ -363,7 +360,7 @@ def compose(fst1, fst2):
         for src in Q_old:
             src1, src2 = src  # State labels in M1, M2
             for t1 in fst1.arcs(src1):
-                for t2 in fst2.arcs(src2):  # xxx use arc sort
+                for t2 in fst2.arcs(src2):  # (todo: sort arcs)
                     if t1.olabel != t2.ilabel:
                         continue
                     dest1 = t1.nextstate
@@ -373,7 +370,7 @@ def compose(fst1, fst2):
                     fst.add_arc(
                         src=src, ilabel=t1.ilabel, olabel=t2.olabel, dest=dest)
                     if fst1.final(dest1) != Zero and fst2.final(dest2) != Zero:
-                        fst.set_final(dest)  # final if both dest1 and dest2 are
+                        fst.set_final(dest)  # Final if both dest1, dest2 are
                     if dest not in Q:
                         Q.add(dest)
                         Q_new.add(dest)
@@ -465,14 +462,12 @@ def left_context_acceptor(context_length=1, sigma_tier=None):
 
     # Self-transitions labeled by skipped symbols
     # on interior states
-    # xxx move outside
     for q in Q:
         if (q == q0) or (q == qf):
             continue
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.connect() # xxx handle state relabeling
     return fst
 
 
@@ -533,7 +528,6 @@ def right_context_acceptor(context_length=1, sigma_tier=None):
         for x in sigma_skip:
             fst.add_arc(src=q, ilabel=x, dest=q)
 
-    #fst = fst.connect() # xxx handle state relabeling
     return fst
 
 

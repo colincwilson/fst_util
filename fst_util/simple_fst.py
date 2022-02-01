@@ -18,7 +18,7 @@ class SimpleFst():
         self.Q = set(Q) if Q is not None else set()  # States
         self.q0 = q0 if q0 is not None else -1  # Initial state
         self.F = set(F) if F is not None else set()  # Final states
-        self.T = T if T is not None else {}  # map state -> outgoing arcs
+        self.T = T if T is not None else {}  # mapping state -> outgoing arcs
         # (outgoing arc collection is Set [default] or List)
 
     def add_state(self, q):
@@ -63,9 +63,8 @@ class SimpleFst():
 
     def delete_states(self, dead_states):
         """
-        Delete states and their outgoing/incoming arcs
+        Delete states and their outgoing/incoming arcs [nondestructive]
         """
-        # [nondestructive]
         Q = self.Q.difference(dead_states)
         q0 = self.q0 if self.q0 not in dead_states else -1
         F = self.F.difference(dead_states)
@@ -91,9 +90,7 @@ class SimpleFst():
             T[q] = set()
             for t in T_q:
                 t_new = SimpleArc(t.src, t.ilabel, t.olabel, t.dest)
-                #T[q].add(copy(t))
                 T[q].add(t_new)
-        #T = deepcopy(self.T)
         return SimpleFst(Q, q0, F, T)
 
     def print(self):
