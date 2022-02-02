@@ -17,8 +17,9 @@ class Fst(pynini.Fst):
             input_symtable = pynini.SymbolTable()
             input_symtable.add_symbol(config.epsilon)
         if output_symtable is None:
-            output_symtable = pynini.SymbolTable()
-            output_symtable.add_symbol(config.epsilon)
+            output_symtable = input_symtable
+            #output_symtable = pynini.SymbolTable()
+            #output_symtable.add_symbol(config.epsilon)
         super().set_input_symbols(input_symtable)
         super().set_output_symbols(output_symtable)
         self._state2label = {}  # State id -> label
@@ -50,11 +51,11 @@ class Fst(pynini.Fst):
         """ Add arc (accepts int or string attributes) """
         if not isinstance(src, int):
             src = self.state_index(src)
-        if not isinstance(ilabel, int):
-            ilabel = self.mutable_input_symbols().add_symbol(ilabel)
         if olabel is None:
             olabel = ilabel
-        elif not isinstance(olabel, int):
+        if not isinstance(ilabel, int):
+            ilabel = self.mutable_input_symbols().add_symbol(ilabel)
+        if not isinstance(olabel, int):
             olabel = self.mutable_output_symbols().add_symbol(olabel)
         if weight is None:
             weight = pynini.Weight.one(self.weight_type())
@@ -378,7 +379,7 @@ def compose(fst1, fst2):
     return fst.connect()
 
 
-def accepted_strings(fst, side='output', max_len=10):
+def accepted_strings(fst, side='input', max_len=10):
     """
     Strings accepted by fst on designated side, up to max_len (not including bos/eos); cf. pynini for paths through acyclic fst
     todo: epsilon-handling
