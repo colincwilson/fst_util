@@ -11,8 +11,11 @@ class Fst(pynini.Fst):
     todo: more destructive operations
     """
 
-    def __init__(self, input_symtable=None, output_symtable=None):
-        super().__init__()
+    def __init__(self,
+                 input_symtable=None,
+                 output_symtable=None,
+                 arc_type='standard'):
+        super().__init__(arc_type)
         if input_symtable is None:
             input_symtable = pynini.SymbolTable()
             input_symtable.add_symbol(config.epsilon)
@@ -25,6 +28,8 @@ class Fst(pynini.Fst):
         self._state2label = {}  # State id -> label
         self._label2state = {}  # Label -> state id
         self.sigma = {}  # State output function
+
+    # States
 
     def add_state(self, state_label=None):
         """ Add new state, optionally specifying its label """
@@ -41,28 +46,6 @@ class Fst(pynini.Fst):
         self._state2label[state] = state_label
         self._label2state[state_label] = state
         return state
-
-    def add_arc(self,
-                src=None,
-                ilabel=None,
-                olabel=None,
-                weight=None,
-                dest=None):
-        """ Add arc (accepts int or string attributes) """
-        if not isinstance(src, int):
-            src = self.state_index(src)
-        if olabel is None:
-            olabel = ilabel
-        if not isinstance(ilabel, int):
-            ilabel = self.mutable_input_symbols().add_symbol(ilabel)
-        if not isinstance(olabel, int):
-            olabel = self.mutable_output_symbols().add_symbol(olabel)
-        if weight is None:
-            weight = pynini.Weight.one(self.weight_type())
-        if not isinstance(dest, int):
-            dest = self.state_index(dest)
-        arc = pynini.Arc(ilabel, olabel, weight, dest)
-        return super().add_arc(src, arc)
 
     def set_start(self, state):
         if not isinstance(state, int):
@@ -92,17 +75,35 @@ class Fst(pynini.Fst):
         zero = pynini.Weight.zero(self.weight_type())
         return self.final(state) != zero
 
-    def input_label(self, sym_id):
-        return self.input_symbols().find(sym_id)
-
-    def output_label(self, sym_id):
-        return self.output_symbols().find(sym_id)
-
     def state_label(self, state):
         return self._state2label[state]
 
     def state_index(self, state):
         return self._label2state[state]
+
+    # Arcs
+
+    def add_arc(self,
+                src=None,
+                ilabel=None,
+                olabel=None,
+                weight=None,
+                dest=None):
+        """ Add arc (accepts int or string attributes) """
+        if not isinstance(src, int):
+            src = self.state_index(src)
+        if olabel is None:
+            olabel = ilabel
+        if not isinstance(ilabel, int):
+            ilabel = self.mutable_input_symbols().add_symbol(ilabel)
+        if not isinstance(olabel, int):
+            olabel = self.mutable_output_symbols().add_symbol(olabel)
+        if weight is None:
+            weight = pynini.Weight.one(self.weight_type())
+        if not isinstance(dest, int):
+            dest = self.state_index(dest)
+        arc = pynini.Arc(ilabel, olabel, weight, dest)
+        return super().add_arc(src, arc)
 
     def arcs(self, src):
         if not isinstance(src, int):
@@ -113,6 +114,29 @@ class Fst(pynini.Fst):
         if not isinstance(src, int):
             src = self.state_index(src)
         return super().mutable_arcs(src)
+
+    def num_arcs(self):
+        """
+        Total count of arcs from all states (todo: check in pynini)
+        """
+        val = 0
+        for state in self.states():
+            val += super().num_arcs(state)
+        return val
+
+    def input_label(self, sym_id):
+        return self.input_symbols().find(sym_id)
+
+    def output_label(self, sym_id):
+        return self.output_symbols().find(sym_id)
+
+    def map_weights(self, map_type='identity'):
+        if map_type == 'idenity':
+            return self
+        fst = pynini.arcmap(self, map_type=map_type)
+        return self.from_pynini(fst)
+
+    # Algorithms
 
     def transduce(self, x):
         """
@@ -147,40 +171,6 @@ class Fst(pynini.Fst):
         strpath_iter = fst.paths(output_token_type=osymbols)
         Y = [y for y in strpath_iter.ostrings()]
         return Y
-
-    def copy(self):
-        """ Deep copy """
-        _fst = self
-
-        # Preserve input and output symbols
-        fst = Fst(_fst.input_symbols(), _fst.output_symbols())
-
-        # Copy states
-        state_map = {}
-        q0 = _fst.start()
-        for q in _fst.states():
-            q_label = _fst.state_label(q)
-            q_new = fst.add_state(q_label)
-            state_map[q] = q_new
-            if q == q0:
-                fst.set_start(q_new)
-            fst.set_final(q_new, _fst.final(q))
-
-        # Copy transitions
-        for q in _fst.states():
-            src = state_map[q]
-            for t in _fst.arcs(q):
-                dest = state_map[t.nextstate]
-                fst.add_arc(src, t.ilabel, t.olabel, t.weight.copy(), dest)
-
-        # Copy state labels
-        fst._state2label = _state2label = {}
-        fst._label2state = _label2state = {}
-        for q, l in _fst._state2label.items():
-            _state2label[state_map[q]] = l
-            _label2state[l] = state_map[q]
-
-        return fst
 
     def connect(self):
         """
@@ -292,14 +282,69 @@ class Fst(pynini.Fst):
                                  t1.nextstate)
         return self
 
-    def num_arcs(self):
-        """
-        Total count of arcs from all states (todo: check in pynini)
-        """
-        val = 0
-        for state in self.states():
-            val += super().num_arcs(state)
-        return val
+    # Copying
+
+    def copy(self):
+        """ Deep copy """
+
+        # Preserve input and output symbols
+        fst = Fst(self.input_symbols(), self.output_symbols())
+
+        # Copy states
+        q0 = self.start()
+        for q in self.states():
+            q_new = fst.add_state(self.state_label(q))
+            if q == q0:
+                fst.set_start(q_new)
+            fst.set_final(q_new, self.final(q))
+
+        # Copy transitions
+        for q in self.states():
+            src = self.state_label(q)
+            for t in self.arcs(q):
+                dest = self.state_label(t.nextstate)
+                fst.add_arc(src, t.ilabel, t.olabel, t.weight.copy(), dest)
+
+        # Copy state labels
+        fst._state2label = dict(self._state2label)
+        fst._label2state = dict(self._label2state)
+        if self.sigma is not None:
+            fst.sigma = dict(self.sigma)
+        else:
+            fst.sigma = None
+
+        return fst
+
+    def from_pynini(self, fst):
+        """ Copy pynini fst and add labels from self """
+        fst_out = Fst(self.input_symbols(), self.output_symbols(),
+                      fst.arc_type())
+
+        # Copy states
+        q0 = fst.start()
+        for q in fst.states():
+            q_new = fst_out.add_state(self.state_label(q))
+            if q == q0:
+                fst_out.set_start(q_new)
+            fst_out.set_final(q_new, fst.final(q))
+
+        # Copy transitions
+        for q in fst.states():
+            for t in fst.arcs(q):
+                fst_out.add_arc(q, self.input_label(t.ilabel),
+                                self.output_label(t.olabel), t.weight.copy(),
+                                t.nextstate)
+
+        fst_out._state2label = dict(self._state2label)
+        fst_out._label2state = dict(self._label2state)
+        if self.sigma is not None:
+            fst_out.sigma = dict(self.sigma)
+        else:
+            fst_out.sigma = None
+
+        return fst_out
+
+    # Printing
 
     def print(self, **kwargs):
         # Stringify state labels
